@@ -1,0 +1,80 @@
+version: '3.8'
+
+# ========================================
+# AI News Bot Docker Compose 配置
+# ========================================
+#
+# 启动方式:
+# 1. 复制 .env.example 为 .env 并配置
+# 2. 运行 docker-compose up -d
+#
+# 服务:
+# - app: 主应用
+# - nginx: Nginx反向代理 + SSL
+# - ollama: 本地LLM服务 (可选)
+
+services:
+  # 主应用
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ai-news-bot
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - ./storage:/app/storage
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///app/storage/database.db
+      - OLLAMA_BASE_URL=http://ollama:11434
+    env_file:
+      - ./app/.env
+    networks:
+      - ai-news-network
+
+  # Nginx反向代理 (带SSL)
+  nginx:
+    image: nginx:latest
+    container_name: ai-news-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./storage:/var/www/storage
+    depends_on:
+      - app
+    networks:
+      - ai-news-network
+
+  # 本地LLM服务 (可选，如果使用本地摘要)
+  # 如果不需要本地LLM，可以注释掉此服务
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-news-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - ai-news-network
+    # 如果只需要特定模型，可以取消注释并修改
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 4G
+
+# 网络配置
+networks:
+  ai-news-network:
+    driver: bridge
+
+# 卷配置
+volumes:
+  ollama_data:
+    driver: local
