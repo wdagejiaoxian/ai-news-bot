@@ -9,17 +9,25 @@ version: '3.8'
 # 2. 运行 docker-compose up -d
 #
 # 服务:
-# - app: 主应用
+# - app: 后端 API 服务
+# - web: 前端 Web Panel
 # - nginx: Nginx反向代理 + SSL
-# - ollama: 本地LLM服务 (可选)
+# - rsshub: RSSHub 服务（可选，需 --profile rsshub）
+#
+# 可选依赖:
+# - docker-compose -f docker-compose.ollama.yml up -d   # Ollama 本地 LLM
+#
+# RSSHub 启动方式（二选一）:
+# 方式1: docker compose --profile rsshub up -d          # 与主服务一起启动
+# 方式2: docker-compose -f docker-compose.rsshub.yml up -d  # 独立启动
 
 services:
-  # 主应用
+  # 后端 API 服务
   app:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    container_name: ai-news-bot
+    container_name: ai-news-bot-app
     restart: unless-stopped
     expose:
       - "8000"
@@ -27,16 +35,40 @@ services:
       - ./storage:/app/storage
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///app/storage/database.db
-      - OLLAMA_BASE_URL=http://ollama:11434
+      - RSSHUB_URL=http://rsshub:1200   # Docker 内部网络地址
     env_file:
       - ./app/.env
     networks:
       - ai-news-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 前端 Web Panel
+  web:
+    build:
+      context: ./web-panel
+      dockerfile: Dockerfile
+    container_name: ai-news-bot-web
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ./web-panel/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - ai-news-network
+    environment:
+      - VITE_API_BASE_URL=/api
 
   # Nginx反向代理 (带SSL)
   nginx:
     image: nginx:latest
-    container_name: ai-news-nginx
+    container_name: ai-news-bot-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -48,33 +80,44 @@ services:
       - ./storage:/var/www/storage
     depends_on:
       - app
+      - web
     networks:
       - ai-news-network
 
-  # 本地LLM服务 (可选，如果使用本地摘要)
-  # 如果不需要本地LLM，可以注释掉此服务
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ai-news-ollama
+  # RSSHub 服务（可选，默认不启动）
+  # 启动方式: docker compose --profile rsshub up -d
+  rsshub:
+    image: diygod/rsshub:latest
+    container_name: rsshub
     restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
+    profiles:
+      - rsshub
+    expose:
+      - "1200"
     ports:
-      - "11434:11434"
+      - "1200:1200"
+    environment:
+      - NODE_ENV=production
+      - PORT=1200
+      - LOG_LEVEL=info
+      - REQUEST_TIMEOUT=30000
+      - CACHE_MAX_ITEMS=1000
+      - CACHE_TTL=600
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1200/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - ai-news-network
-    # 如果只需要特定模型，可以取消注释并修改
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 4G
 
 # 网络配置
 networks:
   ai-news-network:
     driver: bridge
-
-# 卷配置
-volumes:
-  ollama_data:
-    driver: local

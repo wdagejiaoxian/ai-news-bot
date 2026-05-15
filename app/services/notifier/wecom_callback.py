@@ -79,10 +79,12 @@ async def wecom_callback(request: Request):
     msg_signature = query.get("msg_signature", "")
     timestamp = query.get("timestamp", "")
     nonce = query.get("nonce", "")
-    
+
+
     # 获取请求体
     post_data = await request.body()
     post_data = post_data.decode("utf-8")
+
     
     # 使用官方SDK解密消息
     ret, xml_content = wxcrypt.DecryptMsg(post_data, msg_signature, timestamp, nonce)
@@ -90,13 +92,19 @@ async def wecom_callback(request: Request):
     if ret != ierror.WXBizMsgCrypt_OK:
         logger.error(f"企业微信消息解密失败: 错误码={ret}")
         return Response(content="success", media_type="text/plain")
-    
+
+    if not xml_content:
+        logger.error("企业微信消息解密后内容为空")
+        return Response(content="success", media_type="text/plain")
+
     # 解析XML获取消息内容
     import xml.etree.ElementTree as ET
     try:
         xml_tree = ET.fromstring(xml_content)
-        content = xml_tree.find("Content").text or ""
-        from_user = xml_tree.find("FromUserName").text or str(uuid.uuid4())
+        content_elem = xml_tree.find("Content")
+        content = content_elem.text.strip() if content_elem is not None and content_elem.text else ""
+        from_user_elem = xml_tree.find("FromUserName")
+        from_user = from_user_elem.text if from_user_elem is not None and from_user_elem.text else str(uuid.uuid4())
     except Exception as e:
         logger.error(f"解析消息XML失败: {e}")
         return Response(content="success", media_type="text/plain")
@@ -104,9 +112,23 @@ async def wecom_callback(request: Request):
     # 获取用户发送的内容
     content = content.strip()
 
+
     # ===== 企业微信回调模式：回复消息必须通过主动发送API ===== #
     # 1. 先返回 "success" 表示接收成功（企业微信要求5秒内响应）
     # 2. 然后通过主动发送消息API回复用户
+    asyncio.create_task(process_message_async(from_user, content))
+
+
+    # 返回 success 表示接收成功
+    return Response(content="success", media_type="text/plain")
+
+async def process_message_async(
+        from_user: str,
+        content: str,
+):
+    """异步处理消息并主动回复"""
+    # reply_text 初始化为 None，确保在所有分支下都已定义
+    reply_text: str | None = None
 
     # 使用agent处理消息
     global _user_data
@@ -124,6 +146,7 @@ async def wecom_callback(request: Request):
 
     # 获取或创建会话 ID
     session_id, exist = context_manager.get_session_id(from_user)
+
 
     if not exist or from_user not in _user_data:
         await set_new_agent(from_user)
@@ -150,12 +173,12 @@ async def wecom_callback(request: Request):
                     _user_data[from_user]['model'].model_name
                 ] = 0
 
+
                 if reply_text:
                     break
 
             except Exception as e:
                 retry_count += 1
-                # logger.error(f"agent调用出错：{e}")
 
                 # 检查是否是可重试的错误
                 error_str = str(e).lower()
@@ -206,35 +229,25 @@ async def wecom_callback(request: Request):
                         logger.warning(
                             f"模型{_user_data[from_user]['model'].model_name}已经连续调用失败5次，已从模型注册列表中删除"
                         )
-                        # available_models = [
-                        #     model for model in available_models
-                        #     if model.model_name != _user_data[from_user]['model'].model_name
-                        # ]
 
                     await set_new_agent(from_user)
-
-
-
 
     # 更新会话上下文
     context_manager.update_session(
         session_id=session_id,
         user_input=content,
-        assistant_response=reply_text
+        assistant_response=reply_text or ""
     )
-    
+
     # 主动发送消息回复用户
     if reply_text:
-        send_result = await wecom_send_message(from_user, reply_text)
+        await wecom_send_message(from_user, reply_text)
 
     # 清除用户工具调用缓存
     if from_user in _user_data and 'agent' in _user_data[from_user]:
         agent_obj = _user_data[from_user]['agent']
         if hasattr(agent_obj, 'tool_cache_middleware'):
             agent_obj.tool_cache_middleware.clear_user_cache()
-
-    # 返回 success 表示接收成功
-    return Response(content="success", media_type="text/plain")
 
 
 @router.post("/agent/test")
@@ -244,6 +257,8 @@ async def agent_test(request: Request):
 
     接收用户发送的消息，并回复
     """
+    # reply_text 初始化为 None，确保在所有分支下都已定义
+    reply_text: str | None = None
 
     # 获取请求体
     post_data = await request.body()
@@ -349,12 +364,12 @@ async def agent_test(request: Request):
                         logger.warning(
                             f"模型{_user_data[from_user]['model'].model_name}已经连续调用失败5次，已从模型注册列表中删除"
                         )
-                        # available_models = [
-                        #     model for model in available_models
-                        #     if model.model_name != _user_data[from_user]['model'].model_name
-                        # ]
 
                     await set_new_agent(from_user)
+
+    # 确保 reply_text 已被赋值（LSP 需要这个保证）
+    if reply_text is None:
+        reply_text = ""
 
     # 更新会话上下文
     context_manager.update_session(
@@ -368,6 +383,9 @@ async def agent_test(request: Request):
         agent_obj = _user_data[from_user]['agent']
         if hasattr(agent_obj, 'tool_cache_middleware'):
             agent_obj.tool_cache_middleware.clear_user_cache()
+
+    if not reply_text:
+        reply_text = ""
 
     if reply_text:
         res_text = json.dumps({
@@ -522,13 +540,13 @@ async def _get_or_refresh_access_token(user_id: str = None) -> Optional[str]:
 
     # 2. 缓存不存在或已过期，重新获取
     try:
-        token_url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
+        token_url = f"{settings.wecom_api_base_url}/cgi-bin/gettoken"
         token_params = {
             "corpid": settings.wecom_corp_id,
             "corpsecret": settings.wecom_agent_secret
         }
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.wecom_api_timeout) as client:
             response = await client.get(token_url, params=token_params)
             data = response.json()
 
@@ -573,7 +591,7 @@ async def wecom_send_message(user_id: str, content: str) -> bool:
             return False
             
         # 发送消息
-        send_url = f"https://qyapi.weixin.qq.com/cgi-bin/message/send"
+        send_url = f"{settings.wecom_api_base_url}/cgi-bin/message/send"
         send_params = {"access_token": access_token}
             
         send_data = {
@@ -585,7 +603,7 @@ async def wecom_send_message(user_id: str, content: str) -> bool:
             }
         }
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=settings.wecom_api_timeout) as client:
 
             send_response = await client.post(
                 send_url,

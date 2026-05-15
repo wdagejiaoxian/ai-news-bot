@@ -4,7 +4,6 @@ from langchain.tools import tool
 import asyncio
 
 from app.services.processor.deduplicator import deduplicator
-from app.services.processor.scorer import scorer
 from app.config import get_settings
 import logging
 
@@ -75,6 +74,70 @@ def search_ai_news(keyword: str, limit: int = 15) -> str:
         result += f"   🔗 [阅读原文]({article.url})\n\n"
 
     return result
+
+
+@tool
+def search_ai_news_semantic(query: str, limit: int = 15) -> str:
+    """使用语义搜索查找 AI 资讯文章
+
+    当用户用自然语言描述想找的内容时使用此工具。
+    例如："最近关于AI Agent的进展"、"多模态模型的最新突破"。
+
+    参数：
+        query: 自然语言查询（可以是句子，不只是关键词）
+        limit: 返回文章数量，默认15篇
+    """
+    logger.info(f'调用了search_ai_news_semantic工具, query={query[:50]}')
+
+    from app.services.vector import vector_service
+
+    results = asyncio.run(
+        vector_service.search(query=query, top_k=limit)
+    )
+
+    if not results:
+        return f"未找到与'{query}'相关的AI资讯文章"
+
+    output = f"🔍 语义搜索：'{query}' 找到 {len(results)} 篇相关文章：\n\n"
+    for i, r in enumerate(results, 1):
+        output += f"{i}. {r.title}\n"
+        output += f"   📌 来源: {r.source_name} | ⭐ 评分: {r.score}/100 | 🎯 相关度: {r.similarity:.0%}\n"
+        if r.summary:
+            output += f"   📝 {r.summary[:150]}...\n"
+        output += f"   🔗 {r.url}\n\n"
+
+    return output
+
+
+@tool
+def get_rag_context(question: str, limit: int = 5) -> str:
+    """获取与问题相关的 AI 资讯上下文，用于增强回答质量
+
+    当需要基于最近AI新闻回答用户问题时使用此工具。
+
+    参数：
+        question: 用户的问题
+        limit: 检索的文章数
+    """
+    logger.info(f'调用了get_rag_context工具')
+
+    from app.services.vector import vector_service
+
+    contexts = asyncio.run(
+        vector_service.retrieve_for_agent(question=question, top_k=limit, score_min=60)
+    )
+
+    if not contexts:
+        return "暂无相关资讯上下文"
+
+    output = "📚 相关 AI 资讯上下文：\n\n"
+    for i, ctx in enumerate(contexts, 1):
+        output += f"### {i}. {ctx.title}\n"
+        output += f"摘要: {ctx.summary}\n"
+        output += f"来源: {ctx.url}\n"
+        output += f"相关度: {ctx.similarity:.0%}\n\n"
+
+    return output
 
 
 # @tool

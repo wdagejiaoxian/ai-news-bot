@@ -1,490 +1,264 @@
-# AI News Bot
+# AI News Bot - AI 资讯采集与分析系统
 
-> 🔥 AI资讯与GitHub热门项目自动收录工具 - 让你不错过任何AI领域的重要动态
+![Python](https://img.shields.io/badge/Python-3.11+-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.135-green)
+![Vue 3](https://img.shields.io/badge/Vue_3-3.5-brightgreen)
+![License](https://img.shields.io/badge/License-MulanPSL2-red)
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.135+-009688.svg)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+AI News Bot 是一个自动化 AI 资讯采集、处理与推送系统。它能够定时从 RSS 订阅源和 GitHub Trending 采集最新 AI 资讯，通过 LLM 进行智能摘要、评分和分类，并通过多种渠道推送给用户。同时集成 RSSHub、向量语义服务、AI 对话 Agent，并配备了完整的 Web 管理面板。
 
-## ✨ 功能特性
+## 功能特性
 
-### 📊 数据采集
-- 🤖 **自动采集**: 从RSS订阅源和GitHub Trending获取最新AI资讯
-- 🔄 **智能去重**: 自动识别和过滤重复内容
-- 🌐 **多源聚合**: 支持配置多个RSS源，一站式获取AI动态
+### 数据采集
+- **RSS 订阅源采集** — 支持标准 RSS/Atom 格式，自动解析文章内容，支持增量检测（ETag/Last-Modified）
+- **GitHub Trending 采集** — 按编程语言和时间范围（日/周/月）获取热门项目
+- **RSSHub 集成** — 自动同步 RSSHub 路由，扩展采集来源。支持服务生命周期管理（自动启动/停止/健康检查）
+- **文章内容补全** — 使用 Trafilatura 自动获取文章正文，支持域名黑白名单和动态跳过规则
+- **独立采集间隔** — 每个 RSS 源可独立配置采集频率（目前只是简单的在采集rss源定时任务执行时判断具体的rss源是否到了采集时间）
 
-### 🧠 智能处理
-- 📝 **智能摘要**: 使用LLM生成文章摘要、提取关键词、生成标签
-- 🏷️ **自动打标**: 智能生成文章标签，便于分类检索
-- ⭐ **价值评分**: 使用LLM对资讯进行0-100分评分，从技术创新性、商业价值、行业影响力、时效性、实用价值五个维度评估
-- 🚀 **实时推送**: 高分资讯(≥8分)处理完成后立即推送
+### 智能处理
+- **LLM 摘要生成** — 支持多个 LLM Provider（智谱、硅基流动、OpenRouter、ModelScope，后续会扩充）
+- **文章价值评分** — 5 维度评分（技术创新性、商业价值、行业影响力、时效性、实用价值），0-100 分
+- **批量处理** — 每批 5 篇，批次级并发控制，智能降级（批次失败自动降级到逐篇处理）
+- **内容去重** — URL 哈希（BLAKE2b-128）精确去重 + 标题指纹（SHA256）模糊去重 + 向量语义去重
+- **关键词提取 & 标签分类** — 自动提取关键词，多维标签体系（领域/技术/主题/影响层级）
+- **LLM 并发控制** — 每个 Provider 独立信号量，防止 429 限流
 
-### 📱 消息推送
-- 📊 **日报/周报**: AI资讯与GitHub热门每日/每周汇总推送
-- 🔔 **多渠道推送**: 支持企业微信（群机器人+自建应用）、Telegram
-- 🤖 **智能对话**: 基于Agentic架构的智能对话处理，支持工具使用、上下文管理和多轮对话
+### 向量服务（7 大场景）
+- **语义去重（S1）** — 入库前检查语义相似文章
+- **LLM 缓存（S2）** — 语义相似查询命中时复用 LLM 结果
+- **语义搜索（S3）** — 关键词 + Embedding 混合搜索，带评分权重排序
+- **Agent RAG（S4）** — 为 Agent 对话提供检索增强生成（待实现）
+- **相似推荐（S5）** — 推荐与指定文章语义相似的内容（阈值 0.80）
+- **主题聚类（S6）** — 使用 HDBSCAN 对文章进行无监督主题聚类
+- **GitHub 相似（S7）** — 查找语义相似的 GitHub 项目（待实现）
 
-### ⚙️ 系统特性
-- ⏰ **定时任务**: 自动采集、处理、即时推送、每日精选、每周汇总
-- 🔍 **搜索功能**: 支持全文检索历史资讯
-- 🔄 **多平台LLM智能切换**: 支持智谱、硅基流动、OpenRouter等多平台模型智能切换和轮询，解决单一模型并发限制导致的429错误
-- 🐳 **Docker部署**: 一键部署，开箱即用
+### 多平台推送
+- **企业微信** — 群机器人 Webhook + 自建应用消息 + 应用回调消息接收
+- **Git** — 自动同步到Git仓库
+- **Obsidian** — Local REST API 模式（仅在Obsidian与本项目在同一台主机下运行时支持，若需要远程同步，可考虑Git间接同步Obsidian
+- 后续会拓展更多平台
+- **内容格式转换** — 长内容 支持转换为 Markdown文件 或者 PDF文件 发送
+- **推送失败处理** — 自动统计失败次数，达到阈值自动停用 Webhook
+
+### 定时报告
+- **即时推送** — 高分资讯即时推送
+- **日报** — 每日 AI 资讯 + GitHub 热门汇总推送
+- **周报** — 每周汇总推送
+- **LLM 增强** — 可选启用 LLM 翻译和优化报告内容
+- **可配置模板** — 支持自定义消息模板（预设模板 + 变量系统）
+
+### AI 对话 Agent
+- **企业微信集成** — 通过企业微信自建应用与 AI Agent 对话（消息加解密）
+- **多技能系统** — 内置 AI 资讯查询、GitHub 趋势查询、基础对话等技能
+- **长期记忆** — 跨会话持久化记忆管理（InMemoryStore / SQLite）
+- **工具调用** — 支持查询资讯、GitHub 项目等工具，带工具调用缓存中间件
+- **意图识别** — 智能理解用户意图，自动路由到对应技能
+
+### 配置管理
+- **双层配置体系** — .env 环境变量基础配置 + 数据库动态配置覆盖
+- **配置加密** — AES-256-GCM 加密敏感配置值（API Key 等），ENC 前缀标记
+- **Web 面板管理** — 所有数据库配置均可通过 Web 面板在线修改，即时生效
+
+### Web 管理面板
+- **数据看板** — ECharts 可视化仪表盘（文章趋势、评分分布、推送统计）
+- **文章管理** — 浏览、搜索、筛选、详情查看（支持语义搜索）
+- **GitHub 项目管理** — 管理采集到的 GitHub 热门项目，管理需要进行GitHub采集的语言
+- **RSS 源管理** — 添加/编辑/删除 RSS 订阅源，支持 RSSHub 路由选择
+- **RSSHub帮助** — 用于展示RSSHub、Docker运行状态，对RSSHub进行介绍，对RSSHub支持的路由进行展示，指引Docker的部署
+- **我的 LLM 配置** — 管理多 Provider 的 LLM 模型配置
+- **Embedding模型配置** — 管理多 Provider 的 Embedding模型配置
+- **向量数据库配置** — 管理向量数据库，目前仅支持Chroma，后续会扩展，在此页面可配置不同维度的库，并进行切换
+- **Webhook 配置** — 管理推送渠道（企业微信/Telegram/Discord/Obsidian）
+- **定时任务管理** — 查看/启停/手动触发定时任务
+- **主题聚类可视化** — 查看 HDBSCAN 聚类结果
+- **系统设置** — 全局性系统参数配置
+- **日志页面** — 操作日志、系统运行日志、推送日志、定时任务执行历史
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| **后端框架** | Python FastAPI + Uvicorn (ASGI) |
+| **ORM** | SQLAlchemy 2.0 (async) + aiosqlite |
+| **数据库** | SQLite（WAL 模式，30s busy_timeout，Alomic 迁移） |
+| **向量数据库** | ChromaDB（适配器模式，预留 Milvus/Qdrant 扩展） |
+| **任务调度** | APScheduler 3.11 (AsyncIOScheduler) |
+| **AI Agent** | DeepAgents + LangGraph (LangGraph Checkpoint/Store) |
+| **LLM 集成** | 智谱 / 硅基流动 / OpenRouter / ModelScope |
+| **Embedding** | Ollama / OpenAI / SiliconFlow |
+| **RSS 解析** | feedparser + Trafilatura 正文提取 |
+| **PDF 生成** | weasyprint + mistune (Markdown→PDF) |
+| **内容加密** | AES-256-GCM (pycryptodome) |
+| **测试框架** | Pytest + pytest-asyncio |
+| **前端框架** | Vue 3.5 + TypeScript |
+| **UI 组件** | Element Plus 2.13 |
+| **图表** | ECharts 6.0 + vue-echarts |
+| **状态管理** | Pinia 3.0 |
+| **构建工具** | Vite 8 + vue-tsc |
+| **HTTP 客户端** | Axios |
+| **部署** | Docker + Docker Compose + Nginx |
 
 ## 快速开始
 
-### 1. 环境要求
-
+### 环境要求
 - Python 3.11+
-- Docker & Docker Compose (可选)
+- Node.js 18+
 
-### 2. 本地开发
-
+### 1. 克隆并配置
 ```bash
-# 克隆项目
 git clone <repo-url>
 cd ai_news_bot
 
+# 复制配置文件
+cp .env.example .env
+# 编辑 .env，至少配置 SECRET_KEY 和 WEB_PANEL_PASSWORD
+```
+
+### 2. 启动后端
+```bash
 # 创建虚拟环境
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux/Mac
+source .venv/bin/activate
 
 # 安装依赖
 pip install -r requirements.txt
 
-# 复制配置文件
-cp .env.example .env
-
-# 编辑 .env 文件，配置必要的参数
-# 至少需要配置:
-# - WECOM_WEBHOOK_KEY: 企业微信Webhook Key
-# - OPENAI_API_KEY: OpenAI API Key (用于智谱和评分)
-# - SILICONFLOW_API_KEY: 硅基流动API密钥
-# - OLLAMA_BASE_URL: Ollama服务地址 (可选，用于本地摘要)
-
-# 启动应用
-python -m uvicorn app.main:app --reload
-```
-
-### 3. Docker部署
-
-```bash
-# 复制配置文件
-cp .env.example .env
-
-# 编辑 .env 文件
-
 # 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
+python -m uvicorn app.main:app --reload --port 8000
 ```
+
+### 3. 启动前端（可选）
+```bash
+cd web-panel
+npm install
+npm run dev
+```
+
+### 4. 首次运行
+首次启动会自动初始化数据库、创建默认管理员用户。访问以下地址：
+
+- **Web 面板**：http://localhost:3000（默认账号密码见 `.env` 配置）
 
 ## 配置说明
 
-### .env 配置文件
+### 核心环境变量（.env）
 
-| 变量 | 说明 | 必填 | 默认值 |
-|-----|------|-----|-------|
-| **企业微信-群机器人** | | | |
-| `WECOM_WEBHOOK_KEY` | 企业微信群机器人Webhook Key | ✅ | - |
-| **企业微信-自建应用（双向交互）** | | | |
-| `WECOM_CORP_ID` | 企业ID | ❌ | - |
-| `WECOM_AGENT_ID` | 自建应用ID | ❌ | - |
-| `WECOM_AGENT_SECRET` | 自建应用密钥 | ❌ | - |
-| `WECOM_TOKEN` | API接收消息Token | ❌ | - |
-| `WECOM_AES_KEY` | API接收消息EncodingAESKey | ❌ | - |
-| **LLM配置** | | | |
-| `OPENAI_API_KEY` | OpenAI API Key（智谱也用此字段） | ✅ | - |
-| `OPENAI_API_BASE` | OpenAI API 地址 | ❌ | https://api.openai.com/v1 |
-| `SILICONFLOW_API_KEY` | 硅基流动API密钥 | ❌ | - |
-| `SILICONFLOW_API_BASE` | 硅基流动API地址 | ❌ | https://api.siliconflow.cn/v1 |
-| `OPENROUTER_API_KEY` | OpenRouter API密钥 | ❌ | - |
-| `OPENROUTER_API_BASE` | OpenRouter API地址 | ❌ | https://openrouter.ai/api/v1 |
-| `OLLAMA_BASE_URL` | Ollama服务地址 | ❌ | - |
-| `OLLAMA_MODEL` | 本地模型名称 | ❌ | llama3 |
-| **其他配置** | | | |
-| `GITHUB_TOKEN` | GitHub API Token | ❌ | - |
+| 配置项 | 说明 | 是否必填 | 默认值 |
+|--------|------|---------|-------|
+| `SECRET_KEY` | JWT 密钥（≥32 字符） | **必填** | 空 |
+| `DATABASE_URL` | 数据库连接 URL | 可选 | sqlite+aiosqlite:///storage/database.db |
+| `WEB_PANEL_USERNAME` | Web 面板用户名 | 可选 | admin |
+| `WEB_PANEL_PASSWORD` | Web 面板密码 | **必填** | 空 |
+| `GITHUB_TOKEN` | GitHub API Token（提高频率限制） | 可选 | 空 |
 
-### 企业微信双向交互配置
+> **LLM 和 Embedding 的 API Key 等敏感配置已迁移至数据库管理**，通过 Web 面板配置后加密存储，即时生效。
 
-项目支持两种企业微信接入方式：
+## Docker 部署
 
-#### 1. 群机器人模式（仅推送）
-适合只需要单向推送资讯的场景，配置简单：
 ```bash
-WECOM_WEBHOOK_KEY=your-webhook-key
+# 完整部署（后端 + 前端 + Nginx）
+docker-compose up -d
+
+# 启动可选 RSSHub 服务（二选一）
+docker-compose --profile rsshub up -d                # 方式1：Profiles 模式
+docker-compose -f docker-compose.rsshub.yml up -d    # 方式2：独立文件
+
+# 启动可选 Ollama 本地 LLM
+docker-compose -f docker-compose.ollama.yml up -d
+
+# 仅后端
+docker-compose up -d app
 ```
 
-#### 2. 自建应用模式（双向交互）
-支持用户发送指令、智能对话等双向交互功能：
-```bash
-WECOM_CORP_ID=your-corp-id
-WECOM_AGENT_ID=your-agent-id
-WECOM_AGENT_SECRET=your-agent-secret
-WECOM_TOKEN=your-token
-WECOM_AES_KEY=your-encoding-aes-key
-```
-
-**自建应用模式特性**：
-- 🔐 使用企业微信官方SDK进行消息加解密
-- 🤖 基于Agentic架构的智能对话处理
-- 🧠 支持上下文管理和多轮对话
-- 🛠️ 支持工具调用，可查询资讯、执行评分等操作
-
-### LLM模型配置
-
-项目支持多平台LLM模型智能切换，可在 `app/main.py` 的 `init_llm_models()` 函数中配置：
-
-| 平台 | 模型 | 思考模式 | 工具使用 | 用途 | 并发限制 |
-|-----|------|---------|---------|------|----------|
-| 智谱 | glm-4.7-flash | ✅ 可关闭 | ✅ 支持 | 摘要、关键词、标签、报告增强 | 1 (文档限制) |
-| 智谱 | glm-4-flash-250414 | ✅ 可关闭 | ❌ 不支持 | 摘要、关键词、标签、报告增强 | 5 (文档限制) |
-| OpenRouter | z-ai/glm-4.5-air:free | ✅ 可关闭 | ✅ 支持 | 摘要、关键词、标签、报告增强 | 可配置 |
-| OpenRouter | nvidia/nemotron-3-nano-30b-a3b:free | ❌ 强制开启 | ✅ 支持 | 评分（需要推理） | 可配置 |
-| OpenRouter | nvidia/nemotron-3-super-120b-a12b:free | ❌ 强制开启 | ✅ 支持 | 评分（需要推理） | 可配置 |
-| 硅基流动 | Qwen/Qwen3-8B | ✅ 可关闭 | ✅ 支持 | 摘要、关键词、标签、报告增强 | 可配置 (默认1) |
-| 硅基流动 | DeepSeek-R1-0528-Qwen3-8B | ❌ 强制开启 | ❌ 不支持 | 评分（需要推理） | 可配置 (默认1) |
-| 硅基流动 | THUDM/GLM-Z1-9B-0414 | ❌ 强制开启 | ❌ 不支持 | 评分（需要推理） | 可配置 (默认1) |
-| 硅基流动 | THUDM/GLM-4.1V-9B-Thinking | ❌ 强制开启 | ❌ 不支持 | 评分（需要推理） | 可配置 (默认1) |
-
-**设计原理**：
-
-- **思考模式**：需要思考的任务（评分）→ 使用推理模型；不需要思考的任务（摘要/标签/报告增强）→ 优先使用能关闭思考的模型，节省Token和响应时间
-- **工具使用**：支持工具使用的模型可用于Agentic架构的智能对话场景
-- **并发控制**：通过智能轮询和并发控制，有效规避单一模型的429限流错误
-- **多平台冗余**：当一个平台的模型达到并发限制时，自动切换到其他平台的可用模型
-
-**配置说明**：
-```python
-# 在 app/main.py 的 init_llm_models() 函数中配置
-llm_manager.register_model(
-    provider=LLMProvider.SILICONFLOW,  # 平台：ZHIPU, SILICONFLOW, OPENROUTER
-    model_name="your-model-name",      # 模型名称
-    api_key=settings.siliconflow_api_key,  # API密钥
-    api_base=settings.siliconflow_api_base,  # API地址
-    can_disable_thinking=True,  # 是否能关闭思考模式
-    can_use_tool=True,          # 是否支持工具使用
-    max_concurrent=3            # 最大并发数
-)
-```
-
-### Agentic智能对话架构
-
-项目采用Agentic架构实现智能对话功能，支持企业微信双向交互场景：
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     主Agent (AgentManage)                 │
-│  职责: 理解意图 → 任务规划 → 协调执行 → 记忆管理 → 综合回复 │
-├─────────────────────────────────────────────────────────┤
-│                        子Agent团队                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
-│  │news-researcher│  │github-analyzer│  │general-assistant│  │
-│  │  AI资讯研究   │  │ GitHub分析   │  │   通用助手      │  │
-│  └─────────────┘  └─────────────┘  └─────────────────┘  │
-├─────────────────────────────────────────────────────────┤
-│                       工具层 (Tools)                      │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │ 查询资讯 │ 项目分析 │ 评分工具 │ 上下文管理 │ ... │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
-
-**核心特性**：
-- 🧠 **意图理解**：准确理解用户需求，智能路由到合适的子Agent
-- 📋 **任务规划**：使用`write_todos`工具规划复杂任务
-- 🤝 **多Agent协作**：主Agent协调多个专业子Agent分工执行
-- 💾 **长期记忆**：持久化存储用户偏好和交互历史
-- 🔄 **上下文管理**：支持多轮对话，保持对话连贯性
-- 🛠️ **工具集成**：LLM可调用内部功能作为工具（查询资讯、执行评分等）
-
-**子Agent说明**：
-| Agent | 职责 | 使用场景 |
-|-------|------|----------|
-| `news-researcher` | AI资讯研究 | 深入分析AI资讯主题 |
-| `github-analyzer` | GitHub分析 | 分析热门项目和趋势 |
-| `general-assistant` | 通用助手 | 处理通用问答和任务 |
-
-详细实现请参考：[企业微信回调实现指南](./企业微信回调.md)
-
-### 定时任务
-
-| 任务 | 触发方式 | 说明 |
-|-----|---------|-----|
-| 采集AI资讯 | 每1.5小时 | 从RSS源获取最新AI资讯 |
-| 采集GitHub热门 | 每天7:00 | 获取GitHub Trending |
-| 处理待处理内容 | 每1小时 | LLM生成摘要+评分+打标 |
-| 即时推送 | 处理完成后 | 高分资讯(≥8分)立即推送 |
-| 发送日报 | 每天9:00 | AI资讯+GitHub热门汇总 |
-| 发送周报 | 每周一8:00 | 本周精选汇总 |
-| 采集GitHub周热门 | 每周一6:00 | 获取GitHub Trending |
-
-## 使用指令
-
-| 指令 | 功能 |
-|-----|------|
-| `/ai_news [数量] [时间]` | 获取AI资讯 |
-| `/github [语言] [时间]` | 获取GitHub热门 |
-| `/today` | 今日简报 |
-| `/search <关键词>` | 搜索历史 |
-| `/sub <主题>` | 订阅主题 |
-| `/settings` | 个人设置 |
-| `/help` | 帮助文档 |
-
-## API接口
-
-| 接口 | 方法 | 说明 |
-|-----|------|------|
-| `/` | GET | 根路径 |
-| `/health` | GET | 健康检查 |
-| `/command` | POST | 处理指令 |
-| `/fetch` | POST | 手动触发采集 |
-| `/stats` | GET | 统计信息 |
-| `/webhook/wecom` | POST | 企业微信回调 |
-| `/webhook/telegram` | POST | Telegram回调 |
+详细部署步骤参考 `部署步骤参考.md`。
 
 ## 项目结构
 
 ```
 ai_news_bot/
-├── app/
-│   ├── __init__.py
-│   ├── config.py              # 配置管理（支持多平台LLM配置）
-│   ├── database.py            # 数据库（SQLAlchemy + SQLite）
-│   ├── main.py                # FastAPI入口（含LLM模型注册）
-│   ├── logging.conf           # 日志配置
-│   ├── models/
-│   │   └── __init__.py        # 数据模型（Article, GitHubRepo, User）
-│   ├── utils/
-│   │   └── ...                # 工具函数（加解密等）
-│   └── services/
-│       ├── commands.py         # 指令解析与处理
-│       ├── fetcher/
-│       │   ├── __init__.py
-│       │   ├── rss_parser.py   # RSS订阅源解析
-│       │   └── github_trending.py  # GitHub Trending采集
-│       ├── notifier/
-│       │   ├── __init__.py
-│       │   ├── base.py         # 消息推送基类
-│       │   └── wecom_callback.py  # 企业微信回调处理
-│       ├── processor/
-│       │   ├── __init__.py
-│       │   ├── llm_manager.py  # LLM调用管理器（多平台切换+并发控制+工具使用）
-│       │   ├── llm_service.py  # LLM服务封装
-│       │   ├── summarizer.py   # 摘要/关键词/标签生成
-│       │   ├── scorer.py       # 文章评分
-│       │   └── deduplicator.py # 内容去重
-│       ├── scheduler/
-│       │   ├── __init__.py
-│       │   └── jobs.py         # 定时任务调度
-│       └── agentic/            # Agentic智能对话架构
-│           ├── __init__.py
-│           ├── agent_manage.py # Agent管理（主Agent+子Agent协调）
-│           ├── backend.py      # 后端存储工厂
-│           ├── context_manager.py  # 上下文管理
-│           ├── skills/         # Agent技能目录
-│           └── tools/          # Agent工具集
-├── docker/
-│   └── Dockerfile
-├── nginx/
-│   ├── nginx.conf             # Nginx配置
-│   └── conf.d/                # 站点配置
-├── storage/                   # 数据存储目录
-├── logs/                      # 日志目录
-├── docker-compose.yml
-├── requirements.txt
-├── .env.example
-├── .env                       # 环境配置（不提交到Git）
-├── 大模型切换.md              # 大模型切换方案设计文档
-├── 企业微信回调.md            # 企业微信回调实现指南（Agentic架构版）
-├── 部署步骤参考.md            # 部署参考文档
-└── README.md
+├── app/                            # 后端 Python 应用
+│   ├── main.py                     # FastAPI 入口 + 生命周期管理
+│   ├── config.py                   # Pydantic Settings 配置管理
+│   ├── database.py                 # 异步数据库引擎和会话管理
+│   ├── logging.conf                # 日志配置文件
+│   ├── api/                        # REST API 路由（22 个路由模块）
+│   │   ├── auth.py                 # 登录/Token 刷新
+│   │   ├── articles.py             # 文章 CRUD + 语义搜索
+│   │   ├── github.py               # GitHub Trending 查询
+│   │   ├── rss.py                  # RSS 源 CRUD（含增量检测）
+│   │   ├── scheduler/              # 调度器 API（启停/配置）
+│   │   ├── webhook/                # Webhook CRUD/测试
+│   │   ├── vector_config.py        # 向量服务配置
+│   │   ├── llm_config.py           # LLM Provider 配置
+│   │   ├── system_config.py        # 系统配置
+│   │   └── ...                     # 日志/统计/模板/Obsidian 等
+│   ├── models/                     # SQLAlchemy 数据模型
+│   ├── services/                   # 业务逻辑层
+│   │   ├── fetcher/                # RSS/GitHub/内容采集
+│   │   ├── processor/              # LLM 摘要/评分/去重
+│   │   ├── notifier/               # 多渠道推送（企微/Telegram/Discord/Obsidian）
+│   │   ├── scheduler/              # APScheduler 定时任务
+│   │   ├── vector/                 # 向量服务（7 场景编排）
+│   │   ├── agentic/                # DeepAgents AI Agent
+│   │   └── rsshub/                 # RSSHub 集成管理
+│   ├── auth/                       # JWT + HTTP Bearer 认证
+│   ├── middleware/                 # RequestID/异常处理/限流
+│   └── utils/                      # 加密/审计/日志脱敏/响应工具
+├── web-panel/                      # Vue 3 前端应用（14 个页面）
+│   └── src/
+│       ├── pages/                  # 14+ 页面组件
+│       ├── router/                 # Vue Router 配置
+│       ├── store/                  # Pinia 状态管理
+│       ├── api/                    # Axios API 请求层
+│       └── components/             # 20+ 通用组件
+├── alembic/                        # 数据库迁移（14 个版本）
+├── docker/                         # Docker 构建文件
+├── nginx/                          # Nginx 反向代理配置
+├── storage/                        # 运行时数据（SQLite/ChromaDB/Agent Memory）
+├── tests/                          # Pytest 测试
+│   └── unit/
+│       ├── api/                    # API 层测试
+│       └── services/               # 服务层测试
+├── scripts/                        # 工具脚本
+├── .env.example                    # 环境变量模板
+├── requirements.txt                # Python 依赖
+└── pytest.ini                      # Pytest 配置
 ```
 
-## 核心模块说明
+## 定时任务
 
-### 1. LLM调用管理器 (llm_manager.py)
+| 任务 ID | 默认间隔 | 说明 |
+|---------|---------|------|
+| `fetch_ai_news` | 每 30 分钟 | RSS 订阅源采集（支持增量检测 ETag/Last-Modified） |
+| `fetch_github_trending` | 每 60 分钟 | GitHub Trending 热门项目采集 |
+| `fetch_weekly_github_trending` | 每周一 | GitHub 周热门采集 |
+| `process_pending_content` | 每 5 分钟 | LLM 批量处理待处理文章（摘要/评分/标签/关键词） |
+| `send_daily_report` | 每天 09:00 | 日报生成与多渠道推送 |
+| `send_weekly_report` | 每周一 09:00 | 周报生成与多渠道推送 |
+| `cleanup_low_score_articles` | 每天 03:00 | 自动清理低评分（≤40 分）文章 |
+| `cleanup_expired_data` | 每天 03:00 | 清理过期数据 |
+| `cluster_topics` | 每天 02:00 | HDBSCAN 无监督主题聚类 |
+| `reindex_vectors` | 每周日 04:00 | 向量数据库对账与一致性检查 |
 
-项目核心模块，实现多平台LLM智能切换：
+## 评分标准
 
-- **多平台支持**: 管理智谱、硅基流动等多个LLM提供商
-- **智能模型选择**: 根据任务类型（是否需要思考）自动选择合适模型
-- **并发控制**: 使用 `asyncio.Semaphore` 限制各模型并发数，防止429错误
-- **轮询调度**: 平衡各模型负载，提高整体吞吐量
-- **故障转移**: 主模型失败时自动切换到备用模型
-- **集中重试**: 统一处理429等限流错误，支持指数退避
-- **工具集成**: 支持LLM调用内部功能作为工具（如查询资讯、评分等）
+文章价值评分（0-100）基于以下 5 个维度：
 
-### 2. 摘要生成器 (summarizer.py)
+| 分数区间 | 等级 | 说明 |
+|---------|------|------|
+| 90-100 | 重大突破 | 行业里程碑事件、颠覆性技术 |
+| 80-89 | 重要进展 | 头部公司动态、重要产品发布 |
+| 70-79 | 值得关注 | 有意义的进展、趋势分析 |
+| 60-69 | 常规资讯 | 一般产品更新、行业新闻 |
+| 40-59 | 价值有限 | 内容较浅、重复性高 |
+| 0-39 | 低价值 | 营销推广、内容质量差 |
 
-- 生成文章摘要（100-200字）
-- 提取关键词（3-8个）
-- 生成标签（2-5个）
-- 支持批量处理
-- 支持Ollama本地模型和OpenAPI方式
-
-### 3. 评分器 (scorer.py)
-
-- 0-10分评分体系
-- 5大维度评估：技术创新性、商业价值、行业影响力、时效性、实用价值
-- 高分内容(≥8分)即时推送
-- 支持单篇和批量评分
-
-### 4. 定时任务调度 (scheduler/jobs.py)
-
-基于APScheduler的异步调度：
-- 资讯采集（AI新闻和GitHub Trending）
-- 内容处理（摘要+评分+打标）
-- 即时推送（高分内容）
-- 日报/周报汇总生成和推送
-
-## 扩展开发
-
-### 添加新的RSS源
-
-在 `.env` 中配置:
-```
-DEFAULT_RSS_SOURCES=https://example.com/feed.xml|https://another.com/rss
-```
-
-### 添加新的LLM模型
-
-在 `app/main.py` 的 `init_llm_models()` 函数中添加：
-
-```python
-llm_manager.register_model(
-    provider=LLMProvider.SILICONFLOW,  # 或 LLMProvider.ZHIPU
-    model_name="your-model-name",
-    api_key=settings.siliconflow_api_key,  # 或 settings.openai_api_key
-    api_base=settings.siliconflow_api_base,  # 或 settings.openai_api_base
-    can_disable_thinking=True,  # 是否能关闭思考模式
-    max_concurrent=3  # 最大并发数
-)
-```
-
-### 添加新的推送渠道
-
-参考 `app/services/notifier/base.py` 实现新的通知器类。
-
-### 添加新的数据源
-
-在 `app/services/fetcher/` 目录下添加新的采集器。
-
-### 添加新的Agent技能
-
-在 `app/services/agentic/skills/` 目录下添加新的技能文件，参考现有技能格式。
-
-### 添加新的Agent工具
-
-在 `app/services/agentic/tools/` 目录下添加新的工具函数，并在 `all_tools` 列表中注册。
-
-## 使用示例
-
-### 1. 通过API触发采集
-
-```bash
-# 采集AI资讯
-curl -X POST "http://localhost:8001/fetch" \
-  -H "Content-Type: application/json" \
-  -d '{"source": "news"}'
-
-# 采集GitHub热门
-curl -X POST "http://localhost:8001/fetch" \
-  -H "Content-Type: application/json" \
-  -d '{"source": "github"}'
-
-# 采集所有
-curl -X POST "http://localhost:8001/fetch" \
-  -H "Content-Type: application/json" \
-  -d '{"source": "all"}'
-```
-
-### 2. 通过API发送指令
-
-```bash
-# 获取今日简报
-curl -X POST "http://localhost:8001/command" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "/today"}'
-
-# 搜索AI相关资讯
-curl -X POST "http://localhost:8001/command" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "/search GPT-4"}'
-
-# 获取GitHub热门项目
-curl -X POST "http://localhost:8001/command" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "/github Python weekly"}'
-```
-
-### 3. 查看统计信息
-
-```bash
-curl "http://localhost:8001/stats"
-```
-
-## 常见问题
-
-### Q: 如何解决429限流错误？
-
-A: 项目通过多平台LLM智能切换机制解决此问题：
-1. 配置多个LLM平台（智谱、硅基流动、OpenRouter）
-2. 为每个模型设置合理的 `max_concurrent` 值
-3. 系统会自动轮询和切换可用模型
-
-### Q: 企业微信自建应用如何配置？
-
-A: 参考以下步骤：
-1. 在企业微信管理后台创建自建应用
-2. 获取 `CorpID`、`AgentID`、`AgentSecret`
-3. 配置回调URL和Token
-4. 将配置填入 `.env` 文件
-5. 详细指南请参考：[企业微信回调实现指南](./企业微信回调.md)
-
-### Q: 如何添加自定义RSS源？
-
-A: 在 `.env` 文件中配置 `DEFAULT_RSS_SOURCES`，多个源用 `|` 分隔：
-```bash
-DEFAULT_RSS_SOURCES=https://openai.com/blog/rss.xml|https://news.ycombinator.com/rss|https://your-custom-feed.com/rss
-```
-
-### Q: Docker部署时如何查看日志？
-
-A: 使用以下命令：
-```bash
-# 查看所有服务日志
-docker-compose logs -f
-
-# 查看特定服务日志
-docker-compose logs -f app
-
-# 查看最近100行日志
-docker-compose logs --tail=100 app
-```
-
-### Q: 如何更换LLM模型？
-
-A: 修改 `app/main.py` 中的 `init_llm_models()` 函数，注册新的模型配置。确保：
-1. API密钥和地址正确
-2. `can_disable_thinking` 设置符合模型特性
-3. `max_concurrent` 根据平台限制设置
-
-### Q: 评分阈值如何调整？
-
-A: 在 `.env` 文件中修改 `PUSH_SCORE_THRESHOLD`：
-```bash
-# 只有评分>=7的资讯才会立即推送
-PUSH_SCORE_THRESHOLD=7
-```
+**评分维度权重**：技术创新性(25%) | 商业/战略价值(25%) | 行业影响力(20%) | 时效性/稀缺性(20%) | 实用价值(10%)
 
 ## 许可证
 
-MIT License
-
-## 贡献
-
-欢迎提交Issue和PR！
+[Mulan Permissive Software License v2](LICENSE)

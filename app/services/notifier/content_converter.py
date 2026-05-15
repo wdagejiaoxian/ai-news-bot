@@ -128,7 +128,6 @@ class ContentConverter:
             margin: 0 0 24pt 0;
             padding-bottom: 16pt;
             border-bottom: 3px solid var(--accent-primary);
-            text-shadow: 0 2px 4px rgba(122, 162, 247, 0.2);
             letter-spacing: -0.5px;
         }}
         
@@ -158,16 +157,8 @@ class ContentConverter:
             color: var(--accent-primary);  /* 用蓝色区分链接 */
             text-decoration: none;         /* 确保没有双重下划线 */
             border-bottom: 1px solid currentColor;  /* 细下划线，不增加高度 */
-            padding-bottom: 0;             /* 去掉 padding-bottom，避免撑高行距 */
-            text-shadow: none;             /* 去掉发光效果，避免视觉混乱 */
-            font-weight: 600;              /* 保持与 h3 一致的粗细 */
         }}
         
-        /* 可选：鼠标悬停效果 */
-        h3 a:hover {{
-            color: #ffffff;
-            border-bottom-color: #ffffff;
-        }}
         
         /* ===== 链接 - 发光效果 ===== */
         a {{
@@ -176,13 +167,11 @@ class ContentConverter:
             border-bottom: 2px solid rgba(122, 162, 247, 0.3);
             padding-bottom: 1px;
             font-weight: 500;
-            transition: all 0.2s;
         }}
         
         a:hover {{
             color: #ffffff;
             border-bottom-color: var(--accent-primary);
-            text-shadow: 0 0 8px rgba(122, 162, 247, 0.5);
         }}
         
         /* ===== 段落与文本 ===== */
@@ -252,7 +241,6 @@ class ContentConverter:
             width: 16pt;
             height: 16pt;
             margin-right: 10pt;
-            accent-color: var(--accent-success);
             cursor: pointer;
         }}
         
@@ -271,11 +259,10 @@ class ContentConverter:
             background: var(--code-bg);
             padding: 20pt;
             border-radius: 10px;
-            overflow-x: auto;
+            white-space: pre-wrap;
             margin: 20pt 0;
             line-height: 1.7;
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }}
         
         pre code {{
@@ -295,7 +282,6 @@ class ContentConverter:
             border-radius: 0 12px 12px 0;
             color: var(--text-secondary);
             font-style: italic;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }}
         
         blockquote p {{
@@ -326,8 +312,6 @@ class ContentConverter:
             font-size: 14pt;               /* 表格文字加大 */
             background: var(--bg-secondary);
             border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }}
         
         thead {{
@@ -415,20 +399,6 @@ class ContentConverter:
             border-bottom: 1px dashed var(--accent-primary);
             cursor: help;
             color: var(--accent-primary);
-        }}
-        
-        /* ===== 打印优化（深色模式必须）===== */
-        @media print {{
-            body {{
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }}
-            
-            /* 确保深色背景打印出来 */
-            * {{
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }}
         }}
     </style>
 </head>

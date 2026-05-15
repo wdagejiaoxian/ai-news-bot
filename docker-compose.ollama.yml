@@ -1,0 +1,33 @@
+# ========================================
+# Ollama Docker Compose 配置
+# ========================================
+# AI News Bot 可选依赖：本地 LLM 服务
+#
+# 启动: docker-compose -f docker-compose.ollama.yml up -d
+# 停止: docker-compose -f docker-compose.ollama.yml down
+#
+# 启动后需在 .env 中设置 OLLAMA_BASE_URL=http://ollama:11434
+# 然后重启 app 容器使配置生效
+
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-news-bot-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - ai-news-network
+
+networks:
+  ai-news-network:
+    external: true
+    name: ai-news-network
+
+volumes:
+  ollama_data:
+    driver: local

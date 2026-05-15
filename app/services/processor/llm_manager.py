@@ -11,6 +11,8 @@ import logging
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 from enum import Enum
 
+from app.config import get_settings
+
 logger = logging.getLogger(__name__)
 
 class LLMProvider(Enum):
@@ -24,7 +26,7 @@ class LLMProvider(Enum):
 class LLMMode(Enum):
     """LLM需求枚举"""
     THINKING_REQUIRED = "thinking_required"    # 需要思考模式的任务（如评分）
-    THINKING_NOT_REQUIRED = "thinking_not_required"  # 不需要思考模式的任务（如摘要、关键词、标签、翻译等）
+    # THINKING_NOT_REQUIRED = "thinking_not_required"  # 不需要思考模式的任务（如摘要、关键词、标签、翻译等）
     USE_TOOL_REQUIRED = "use_tool_required"
 
 
@@ -44,7 +46,7 @@ class LLMModelConfig:
         self.model_name = model_name
         self.api_key = api_key
         self.api_base = api_base
-        self.can_disable_thinking = can_disable_thinking
+        # self.can_disable_thinking = can_disable_thinking
         self.can_use_tool = can_use_tool
         self.max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -53,13 +55,13 @@ class LLMModelConfig:
         """检查模型是否可用（API Key是否配置）"""
         return bool(self.api_key)
 
-    def can_handle_task(self, llm_mode: LLMMode) -> bool:
-        """检查模型是否能处理特定思考模式需求"""
-        if llm_mode == LLMMode.THINKING_NOT_REQUIRED:
-            # 不需要思考模式的任务，只能使用能关闭思考模式的模型
-            return self.can_disable_thinking
-        # 需要思考模式的任务，所有模型都能处理（因为都是推理模型）
-        return True
+    # def can_handle_task(self, llm_mode: LLMMode) -> bool:
+    #     """检查模型是否能处理特定思考模式需求"""
+    #     if llm_mode == LLMMode.THINKING_NOT_REQUIRED:
+    #         # 不需要思考模式的任务，只能使用能关闭思考模式的模型
+    #         return self.can_disable_thinking
+    #     # 需要思考模式的任务，所有模型都能处理（因为都是推理模型）
+    #     return True
 
 
 
@@ -112,7 +114,13 @@ class LLMManager:
         self.models: List[LLMModelConfig] = []
         self._model_indices: Dict[LLMMode, int] = {}  # 每种思考模式需求类型的当前模型索引
         self.llm_err_statistic: Dict[str , int] = {}        # 用于统计大模型调用错误次数
+        self._db_session_factory = None  # 数据库会话工厂
         logger.info("LLM管理器初始化")
+
+    def set_db_session_factory(self, session_factory):
+        """设置数据库会话工厂"""
+        self._db_session_factory = session_factory
+        logger.info("LLM管理器已设置数据库会话工厂")
 
     def register_model(
             self,
@@ -120,7 +128,7 @@ class LLMManager:
             model_name: str,
             api_key: str,
             api_base: str,
-            can_disable_thinking: bool = True,
+            # can_disable_thinking: bool = True,
             can_use_tool: bool = True,
             max_concurrent: int = 1
     ) -> None:
@@ -132,7 +140,7 @@ class LLMManager:
             model_name: 模型名称
             api_key: API密钥
             api_base: API基础URL
-            can_disable_thinking: 是否能关闭思考模式
+            # can_disable_thinking: 是否能关闭思考模式
             can_use_tool: 是否能调用工具
             max_concurrent: 最大并发数
         """
@@ -141,7 +149,7 @@ class LLMManager:
             model_name=model_name,
             api_key=api_key,
             api_base=api_base,
-            can_disable_thinking=can_disable_thinking,
+            # can_disable_thinking=can_disable_thinking,
             can_use_tool=can_use_tool,
             max_concurrent=max_concurrent
         )
@@ -152,10 +160,132 @@ class LLMManager:
         else:
             logger.warning(f"跳过注册不可用的LLM模型: {provider.value}/{model_name} (API Key未配置)")
 
+    def register_model_from_db(
+            self, provider: str,
+            model_name: str,
+            api_key: str,
+            api_base: str,
+            can_disable_thinking: bool,
+            can_use_tool: bool,
+            max_concurrent: int) -> None:
+        """
+        从数据库配置注册模型
+
+        Args:
+            provider: LLM提供商 (字符串，可能是大写如 "MODELSCOPE")
+            model_name: 模型名称
+            api_key: API密钥
+            api_base: API基础URL
+            can_disable_thinking: 是否可关闭思考模式
+            can_use_tool: 是否支持工具调用
+            max_concurrent: 最大并发数
+        """
+        # 将 provider 转换为小写以匹配 llm_manager 中的枚举值
+        provider_enum = LLMProvider(provider.lower())
+        model_config = LLMModelConfig(
+            provider=provider_enum,
+            model_name=model_name,
+            api_key=api_key,
+            api_base=api_base,
+            can_disable_thinking=can_disable_thinking,
+            can_use_tool=can_use_tool,
+            max_concurrent=max_concurrent
+        )
+        self.models.append(model_config)
+        logger.info(f"注册LLM模型(从DB): {provider}/{model_name}")
+
+    def unregister_model(self, provider: str, model_name: str) -> bool:
+        """
+        从管理器移除模型
+
+        Args:
+            provider: LLM提供商
+            model_name: 模型名称
+
+        Returns:
+            是否成功移除
+        """
+        original_count = len(self.models)
+        self.models = [
+            m for m in self.models
+            if not (m.provider.value == provider and m.model_name == model_name)
+        ]
+        removed = len(self.models) < original_count
+        if removed:
+            logger.info(f"移除LLM模型: {provider}/{model_name}")
+            # 清除该模型的错误计数
+            if model_name in self.llm_err_statistic:
+                del self.llm_err_statistic[model_name]
+        return removed
+
+    def load_models_from_db(self, db_models: list) -> None:
+        """
+        批量加载模型（启动时使用）
+
+        Args:
+            db_models: 数据库模型列表
+        """
+        from app.utils.crypto import decrypt_api_key
+
+        for db_model in db_models:
+            if db_model.is_active:
+                try:
+                    api_key = decrypt_api_key(db_model.api_key)
+                except Exception:
+                    api_key = db_model.api_key
+
+                self.register_model_from_db(
+                    provider=db_model.provider,
+                    model_name=db_model.model_name,
+                    api_key=api_key,
+                    api_base=db_model.api_base or "",
+                    can_disable_thinking=db_model.can_disable_thinking,
+                    can_use_tool=db_model.can_use_tool,
+                    max_concurrent=db_model.max_concurrent
+                )
+        logger.info(f"从数据库加载了 {len([m for m in self.models if m.provider.value == db_models[0].provider if db_models])} 个LLM模型")
+
+    async def _deactivate_model_in_db(self, provider: str, model_name: str):
+        """
+        将模型 is_active 更新为 False，并同步定时任务状态
+
+        Args:
+            provider: LLM提供商
+            model_name: 模型名称
+        """
+        if not self._db_session_factory:
+            logger.warning("未设置数据库会话工厂，无法更新模型状态")
+            return
+
+        try:
+            async with self._db_session_factory() as session:
+                from sqlalchemy import update
+                from app.models import LLMModel
+
+                stmt = (
+                    update(LLMModel)
+                    .where(LLMModel.provider == provider, LLMModel.model_name == model_name)
+                    .values(is_active=False, consecutive_failures=5)
+                )
+                await session.execute(stmt)
+                await session.commit()
+                logger.info(f"数据库模型已禁用: {provider}/{model_name}")
+        except Exception as e:
+            logger.error(f"更新模型状态失败: {e}")
+            return
+
+        # 模型被禁用后，同步定时任务状态
+        # 如果没有其他可用模型，定时任务应该被禁用
+        try:
+            from app.services.scheduler.task_state_manager import TaskStateManager
+            await TaskStateManager.check_and_update_task_state()
+        except Exception as sync_e:
+            logger.error(f"同步定时任务状态失败: {sync_e}")
+
     def to_select_model(
             self,
             use_tool: bool = False,
-            llm_mode: LLMMode = LLMMode.THINKING_NOT_REQUIRED,
+            llm_mode: LLMMode = LLMMode.THINKING_REQUIRED,
     ) -> Optional[LLMModelConfig]:
         """
         根据思考模式需求选择合适的模型（使用轮询算法）
@@ -176,7 +306,8 @@ class LLMManager:
         else:
             available_models = [
                 model for model in self.models
-                if model.is_available() and model.can_handle_task(llm_mode)
+                # if model.is_available() and model.can_handle_task(llm_mode)
+                if model.is_available()
             ]
 
         if not available_models:
@@ -209,7 +340,7 @@ class LLMManager:
     async def execute_with_limit(
             self,
             func: Callable[..., Awaitable[Any]],
-            llm_mode: LLMMode = LLMMode.THINKING_NOT_REQUIRED,
+            llm_mode: LLMMode = LLMMode.THINKING_REQUIRED,
             ues_tool: bool = False,
             *args,
             **kwargs
@@ -232,7 +363,7 @@ class LLMManager:
         """
 
         # 集中重试机制
-        max_retries = 3
+        max_retries = get_settings().llm_max_retries
         retry_count = 0
         # last_exception = None
 
@@ -304,45 +435,50 @@ class LLMManager:
                             logger.warning(
                                 f"模型{selected_model.model_name}已经连续调用失败5次，已从模型注册列表中删除"
                             )
+                            # 同步更新数据库 is_active=False
+                            asyncio.create_task(self._deactivate_model_in_db(
+                                selected_model.provider.value,
+                                selected_model.model_name
+                            ))
 
             # raise last_exception
             return None
 
-    def close_think_content(
-            self,
-            selected_model: LLMModelConfig,
-            prompt: str,
-            sys_prompt: str = None,
-    ):
-        """
-        当需要关闭模型的思考模式时，需要根据供应商不同填写不同参数
-        :param selected_model: 选择的模型信息
-        :param prompt: 提示词
-        :param sys_prompt: 系统提示词
-        :return: 返回匹配好的字符串
-        """
-        provider = selected_model.provider.value
-        model_name = selected_model.model_name
-
-
-        format_json = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.3,
-        }
-
-        if provider == "zhipu":
-            format_json["thinking"] = {
-                "type": "disabled"
-            }
-        elif provider == "siliconflow" or provider == 'modelscope':
-            format_json["enable_thinking"] = False
-        elif provider == "openrouter":
-            format_json["reasoning"] = {"enabled": True}
-        return format_json
+    # def close_think_content(
+    #         self,
+    #         selected_model: LLMModelConfig,
+    #         prompt: str,
+    #         sys_prompt: str = None,
+    # ):
+    #     """
+    #     当需要关闭模型的思考模式时，需要根据供应商不同填写不同参数
+    #     :param selected_model: 选择的模型信息
+    #     :param prompt: 提示词
+    #     :param sys_prompt: 系统提示词
+    #     :return: 返回匹配好的字符串
+    #     """
+    #     provider = selected_model.provider.value
+    #     model_name = selected_model.model_name
+    #
+    #
+    #     format_json = {
+    #         "model": model_name,
+    #         "messages": [
+    #             {"role": "system", "content": sys_prompt},
+    #             {"role": "user", "content": prompt}
+    #         ],
+    #         "temperature": 0.3,
+    #     }
+    #
+    #     if provider == "zhipu":
+    #         format_json["thinking"] = {
+    #             "type": "disabled"
+    #         }
+    #     elif provider == "siliconflow" or provider == 'modelscope':
+    #         format_json["enable_thinking"] = False
+    #     elif provider == "openrouter":
+    #         format_json["reasoning"] = {"enabled": True}
+    #     return format_json
 
 
 
@@ -358,7 +494,7 @@ class LLMManager:
             key = f"{model.provider.value}:{model.model_name}"
             status[key] = {
                 "available": model.is_available(),
-                "can_disable_thinking": model.can_disable_thinking,
+                # "can_disable_thinking": model.can_disable_thinking,
                 "max_concurrent": model.max_concurrent,
                 "current_permits": model._semaphore._value if hasattr(model, '_semaphore') else 0
             }

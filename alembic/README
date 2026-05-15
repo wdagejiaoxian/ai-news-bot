@@ -1,0 +1,91 @@
+# Alembic 数据库迁移
+
+## 概述
+
+本项目使用 Alembic 进行数据库迁移管理，支持版本化数据库 schema 变更。
+
+## 目录结构
+
+```
+alembic/
+├── env.py                 # Alembic 运行环境配置
+├── script.py.mako         # 迁移脚本模板
+├── README                 # 本文档
+└── versions/              # 迁移版本目录
+    └── 001_initial.py      # 初始迁移
+```
+
+## 快速开始
+
+### 生成新迁移
+
+当模型定义变更后，运行以下命令生成迁移文件：
+
+```bash
+# 生成迁移（自动检测模型变更）
+alembic revision --autogenerate -m "描述变更内容"
+
+# 示例：为 WebhookConfig 添加新字段
+alembic revision --autogenerate -m "add obsidian_settings to webhook_config"
+```
+
+### 应用迁移
+
+```bash
+# 升级到最新版本
+alembic upgrade head
+
+# 升级到特定版本
+alembic upgrade <revision_id>
+
+# 查看当前版本
+alembic current
+
+# 查看迁移历史
+alembic history
+```
+
+### 回滚迁移
+
+```bash
+# 回滚到上一个版本
+alembic downgrade -1
+
+# 回滚到特定版本
+alembic downgrade <revision_id>
+
+# 回滚所有迁移（清空数据库）
+alembic downgrade base
+```
+
+## 工作流程
+
+1. **开发时修改模型** → 在 `app/models/__init__.py` 中修改/添加模型
+2. **生成迁移** → 运行 `alembic revision --autogenerate -m "变更描述"`
+3. **检查迁移脚本** → 审核 `alembic/versions/` 下的生成文件
+4. **应用迁移** → `alembic upgrade head`
+5. **如有问题回滚** → `alembic downgrade -1`
+
+## 注意事项
+
+1. **始终使用 `--autogenerate`**：让 Alembic 自动检测模型变更
+2. **审查生成的迁移**：自动检测可能不完全准确，需人工确认
+3. **不要手动编辑已应用的迁移**：这会导致环境不一致
+4. **测试迁移**：在开发环境充分测试后再应用到生产
+
+## 配置说明
+
+Alembic 配置位于项目根目录的 `alembic.ini`。
+
+数据库 URL 从应用配置（`app/config.py`）读取，无需手动配置。
+
+## 常见问题
+
+**Q: 迁移失败怎么办？**
+A: 检查错误信息，如果是数据兼容性问题，需要修改迁移脚本添加数据转换逻辑。
+
+**Q: 如何在生产环境应用迁移？**
+A: 生产部署前先在测试环境验证，然后按顺序执行 `alembic upgrade head`。
+
+**Q: 模型变更没有被检测到？**
+A: 确保 `alembic/env.py` 中的 `target_metadata` 正确指向 `Base`。

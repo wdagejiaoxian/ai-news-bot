@@ -3,6 +3,8 @@ from app.services.agentic.tools.basic import get_current_time, save_to_memory, s
 from app.services.agentic.tools.news_tools import (
     get_latest_ai_news,
     search_ai_news,
+    search_ai_news_semantic,
+    get_rag_context,
 )
 from app.services.agentic.tools.github_tools import (
     get_github_trending,
@@ -17,6 +19,8 @@ base_tools = [
 ai_news_tools = [
     get_latest_ai_news,
     search_ai_news,
+    search_ai_news_semantic,
+    get_rag_context,
 ]
 github_proj_tools = [
     get_github_trending,
@@ -39,6 +43,8 @@ __all__ = [
     "search_memory",
     "get_latest_ai_news",
     "search_ai_news",
+    "search_ai_news_semantic",
+    "get_rag_context",
     "get_github_trending",
     "analyze_github_trend",
 ]

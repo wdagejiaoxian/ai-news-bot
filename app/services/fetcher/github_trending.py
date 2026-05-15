@@ -6,6 +6,7 @@ GitHub Trending 数据采集模块
 支持按编程语言和时间范围筛选
 """
 
+import asyncio
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,28 @@ import httpx
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+async def _with_timeout(coro, timeout_seconds: float, task_name: str):
+    """
+    带超时的协程执行包装器
+
+    Args:
+        coro: 协程对象
+        timeout_seconds: 超时秒数
+        task_name: 任务名称（用于日志）
+
+    Returns:
+        协程执行结果
+
+    Raises:
+        asyncio.TimeoutError: 超时发生时
+    """
+    try:
+        return await asyncio.wait_for(coro, timeout=timeout_seconds)
+    except asyncio.TimeoutError:
+        logger.error(f"{task_name} 执行超时 ({timeout_seconds}s)")
+        raise
 
 
 class GitHubTrendingFetcher:
@@ -32,7 +55,7 @@ class GitHubTrendingFetcher:
     
     def __init__(self):
         self.settings = get_settings()
-        self.base_url = "https://api.github.com"
+        self.base_url = self.settings.github_api_base_url
         
         # 请求头
         self.headers = {
@@ -92,6 +115,10 @@ class GitHubTrendingFetcher:
         except ImportError:
             logger.warning("gtrending 库未安装，使用 GitHub API 方式")
             return await self._fetch_with_api(language, time_range, limit)
+        except asyncio.TimeoutError:
+            # gtrending 超时时也回退到 API
+            logger.warning(f"gtrending {time_range} 采集超时，回退到 API 方式")
+            return await self._fetch_with_api(language, time_range, limit)
         except Exception as e:
             logger.error(f"gtrending 采集失败: {e}，回退到 API 方式")
             return await self._fetch_with_api(language, time_range, limit)
@@ -104,24 +131,33 @@ class GitHubTrendingFetcher:
     ) -> List[dict]:
         """
         使用 gtrending 库获取Trending
-        
+
         Args:
             language: 编程语言
             time_range: 时间范围
             limit: 返回数量
-        
+
         Returns:
             List[dict]: 项目列表
         """
         # 动态导入 (可选依赖)
         from gtrending import fetch_repos
-        
+        import asyncio
+
         # gtrending 的 since 参数: "daily", "weekly", "monthly"
-        repos_data = fetch_repos(
-            language=language or "",
-            since=time_range
+        # fetch_repos 是同步阻塞函数，必须在线程池中执行
+        # 使用 wait_for 添加超时保护，避免网络卡住时永久等待
+        loop = asyncio.get_event_loop()
+
+        def _fetch():
+            return fetch_repos(language=language or "", since=time_range)
+
+        repos_data = await _with_timeout(
+            loop.run_in_executor(None, _fetch),
+            timeout_seconds=30.0,
+            task_name=f"gtrending {language or '全语言'} {time_range}"
         )
-        
+
         results = []
         trending_date = datetime.now(timezone.utc)
         
@@ -198,7 +234,15 @@ class GitHubTrendingFetcher:
             "per_page": min(limit, 100),  # 最多100
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # 使用更严格的超时配置
+        # httpx.Timeout: connect=连接超时, read=读超时, write=写超时, pool=连接池超时
+        timeout = httpx.Timeout(
+            connect=10.0,   # 连接建立超时 10s
+            read=30.0,      # 读取响应超时 30s
+            write=30.0,     # 写入请求超时 30s
+            pool=10.0,      # 连接池获取连接超时 10s
+        )
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.get(
                 f"{self.base_url}/search/repositories",
                 headers=self.headers,
@@ -243,35 +287,54 @@ class GitHubTrendingFetcher:
         limit_per_lang: int = 20
     ) -> List[dict]:
         """
-        获取多个语言的Trending
-        
-        顺序请求每个语言，合并结果
-        
+        获取多个语言的Trending (并发执行)
+
+        并发请求每个语言，带独立超时保护
+
         Args:
             languages: 语言列表
             time_range: 时间范围
             limit_per_lang: 每个语言的限制数量
-        
+
         Returns:
             List[dict]: 合并后的项目列表
         """
-        all_repos = []
-        
-        for lang in languages:
+        async def fetch_single_language(lang: str) -> List[dict]:
+            """采集单个语言，带超时保护"""
             try:
-                repos = await self.fetch_trending(
-                    language=lang,
-                    time_range=time_range,
-                    limit=limit_per_lang
+                return await _with_timeout(
+                    self.fetch_trending(
+                        language=lang,
+                        time_range=time_range,
+                        limit=limit_per_lang
+                    ),
+                    timeout_seconds=60.0,
+                    task_name=f"语言 {lang} {time_range}"
                 )
-                all_repos.extend(repos)
+            except asyncio.TimeoutError:
+                logger.error(f"采集语言 {lang} 超时，跳过")
+                return []
             except Exception as e:
                 logger.error(f"采集语言 {lang} 失败: {e}")
-                continue
-        
+                return []
+
+        # 并发执行所有语言采集
+        tasks = [fetch_single_language(lang) for lang in languages]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 收集结果
+        all_repos = []
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"语言采集异常: {result}")
+            elif isinstance(result, list):
+                all_repos.extend(result)
+            else:
+                logger.error(f"语言采集结果类型异常: {type(result)}")
+
         # 按star数量排序
         all_repos.sort(key=lambda x: x["stars"], reverse=True)
-        
+
         logger.info(
             f"多语言采集完成，共 {len(all_repos)} 个项目"
         )

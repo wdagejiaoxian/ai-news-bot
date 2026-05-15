@@ -29,6 +29,9 @@ env/
 # IDE
 .vscode/
 .idea/
+
+# AI Agent 工作目录
+.sisyphus/
 *.swp
 *.swo
 *~
@@ -37,7 +40,9 @@ env/
 *.db
 *.sqlite
 *.sqlite3
-storage/*.db
+
+# Storage（运行时数据：SQLite 数据库、ChromaDB 向量库、Agent 记忆、报告）
+storage/
 
 # Environment
 .env
@@ -56,12 +61,24 @@ logs/
 tmp/
 temp/
 *.tmp
+docs/
 
-# Testing
+# Testing (测试代码应该上传到 git)
 .pytest_cache/
 .coverage
-htmlcov/
-.tox/
+htmlcov
+.tox
+# tests/  已移除排除 - 测试代码需要上传到 git
 
 # Docker
 .docker/
+
+# Frontend
+web/node_modules/
+web/dist/
+web/.vite/
+web-panel/node_modules/
+web-panel备份/node_modules/
+web-panel/tests/
+web-panel/test-results/
+

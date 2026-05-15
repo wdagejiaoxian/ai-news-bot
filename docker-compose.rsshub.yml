@@ -1,0 +1,43 @@
+# RSSHub Docker 配置
+# 用于本地开发和测试
+#
+# 启动: docker-compose -f docker-compose.rsshub.yml up -d
+# 停止: docker-compose -f docker-compose.rsshub.yml down
+# 查看日志: docker-compose -f docker-compose.rsshub.yml logs -f
+
+version: '3.8'
+
+services:
+  rsshub:
+    image: diygod/rsshub:latest
+    container_name: rsshub
+    restart: unless-stopped
+    ports:
+      - "1200:1200"
+    environment:
+      # Node.js 配置
+      - NODE_ENV=production
+      # RSSHub 配置
+      - PORT=1200
+      # 日志级别 (debug/info/warn/error)
+      - LOG_LEVEL=info
+      # 请求超时（毫秒）
+      - REQUEST_TIMEOUT=30000
+      # 每小时最大请求数
+      - CACHE_MAX_ITEMS=1000
+      # 缓存TTL（秒）
+      - CACHE_TTL=600
+    # routes.json 通过 docker cp 提取，不再使用卷挂载
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1200/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

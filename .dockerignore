@@ -1,0 +1,63 @@
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pyc
+.pyo
+
+# Virtual environments
+venv
+.venv
+env
+.env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+tests
+
+# Logs
+logs
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Storage
+storage
+
+# Git
+.git
+.gitignore
+
+# Docker（保留 docker-compose.rsshub.yml，RSSHub Manager 需要在容器内使用）
+docker
+docker-compose*.yml
+!docker-compose.rsshub.yml
+Dockerfile
+.dockerignore
+
+# Frontend
+web-panel
+node_modules
+
+# Documentation
+*.md
+docs
+
+# Nginx
+nginx
+
+# Misc
+.DS_Store
+Thumbs.db

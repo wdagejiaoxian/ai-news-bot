@@ -1,0 +1,465 @@
+/**
+ * 全局样式入口
+ *
+ * 注意：此文件由 main.ts 引入
+ * variables.css 和 element-overrides.css 由 main.ts 直接引入
+ */
+
+/* ==================== 字体加载 ==================== */
+
+/* DM Sans - 界面正文（display=swap 避免字体阻塞渲染） */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+/* Outfit - 展示标题（display=swap 避免字体阻塞渲染） */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+/* ==================== 基础重置 ==================== */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+  transition:
+    background-color var(--transition-duration-normal) var(--transition-timing),
+    color var(--transition-duration-fast) var(--transition-timing);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* ==================== 主题切换过渡 ==================== */
+
+/* 优化：只对关键交互元素添加过渡，避免性能问题 */
+:is(a, button, input, select, textarea, .el-button, .el-input, .el-select, .el-dropdown, .el-card, .el-tag, .el-badge, [role="button"]) {
+  transition:
+    background-color var(--transition-duration-fast) var(--transition-timing),
+    border-color var(--transition-duration-fast) var(--transition-timing),
+    color var(--transition-duration-fast) var(--transition-timing),
+    box-shadow var(--transition-duration-fast) var(--transition-timing),
+    transform var(--transition-duration-fast) var(--transition-timing);
+}
+
+/* 例外：排除动画和过渡元素 */
+.no-transition,
+.no-transition *,
+.no-transition::before,
+.no-transition::after {
+  transition: none !important;
+}
+
+/* 卡片悬停优化 - 独立transition */
+.el-card,
+.stat-card,
+.content-card,
+.config-card {
+  transition:
+    transform var(--transition-duration-fast) var(--transition-timing),
+    box-shadow var(--transition-duration-fast) var(--transition-timing);
+}
+
+/* 按钮悬停优化 */
+.el-button {
+  transition:
+    background-color var(--transition-duration-fast) var(--transition-timing),
+    border-color var(--transition-duration-fast) var(--transition-timing),
+    color var(--transition-duration-fast) var(--transition-timing),
+    box-shadow var(--transition-duration-fast) var(--transition-timing),
+    transform var(--transition-duration-fast) var(--transition-timing);
+}
+
+/* ==================== 字体平滑 ==================== */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+h1 { font-size: var(--font-size-h1); }
+h2 { font-size: var(--font-size-h2); }
+h3 { font-size: var(--font-size-h3); }
+h4 { font-size: var(--font-size-h4); }
+
+p {
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-duration-fast) var(--transition-timing);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ==================== 滚动条样式 ==================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-alpha-20);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-alpha-40);
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary-alpha-20) transparent;
+}
+
+/* ==================== 平滑滚动 ==================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ==================== 页面过渡 ==================== */
+
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity var(--transition-duration-normal) var(--transition-timing),
+    transform var(--transition-duration-normal) var(--transition-timing);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* ==================== 浮动元素 ==================== */
+
+.el-floating {
+  animation: float-bob 3s ease-in-out infinite;
+}
+
+@keyframes float-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ==================== 工具类 ==================== */
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.font-display {
+  font-family: var(--font-family-display);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* 间距 */
+.mt-0 { margin-top: 0; }
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mt-lg { margin-top: var(--spacing-lg); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+
+.p-sm { padding: var(--spacing-sm); }
+.p-md { padding: var(--spacing-md); }
+.p-lg { padding: var(--spacing-lg); }
+
+/* Flex 工具 */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+.gap-lg { gap: var(--spacing-lg); }
+
+/* ==================== 响应式工具 ==================== */
+
+/* 响应式断点说明：
+ * - xs: 0 - 575px (超小屏幕)
+ * - sm: 0 - 767px (移动端)
+ * - md: 768px+ (平板及以上)
+ * - lg: 1024px+ (桌面端)
+ * - xl: 1440px+ (大桌面)
+ */
+
+/* 移动端隐藏 (0 - 767px) */
+@media (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* 平板及以上隐藏 (768px+) */
+@media (min-width: 768px) {
+  .show-mobile-only {
+    display: none !important;
+  }
+}
+
+/* 桌面端隐藏 (1024px+) */
+@media (min-width: 1024px) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+/* ==================== 空状态 ==================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-3xl);
+  text-align: center;
+}
+
+.empty-state__icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--color-bg-content);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text-muted);
+  font-size: 32px;
+}
+
+.empty-state__title {
+  font-size: var(--font-size-body-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.empty-state__desc {
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+  margin: 0;
+  max-width: 300px;
+}
+
+.empty-state__action {
+  margin-top: var(--spacing-lg);
+}
+
+/* ==================== 加载状态 ==================== */
+
+/* 增强 el-loading 动画 */
+.el-loading-mask {
+  background-color: rgba(var(--color-bg-card), 0.8);
+  backdrop-filter: blur(2px);
+}
+
+.el-loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.el-loading-spinner .circular {
+  width: 36px;
+  height: 36px;
+}
+
+.el-loading-spinner .path {
+  stroke: var(--color-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+.el-loading-spinner .el-loading-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  margin: 0;
+}
+
+@keyframes dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
+}
+
+/* 骨架屏基础样式 */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-content) 25%,
+    var(--color-bg-card) 37%,
+    var(--color-bg-content) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-title {
+  height: 20px;
+  width: 60%;
+  margin-bottom: var(--spacing-md);
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-button {
+  width: 80px;
+  height: 32px;
+}
+
+/* ==================== 输入框-number 暗黑模式修复 ==================== */
+
+/* 修复控制按钮白边问题 */
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  background-color: var(--color-bg-content) !important;
+  border-color: var(--color-border) !important;
+}
+
+html.dark .el-input-number__decrease {
+  border-right: 1px solid var(--color-border);
+}
+
+html.dark .el-input-number__increase {
+  border-left: 1px solid var(--color-border);
+}
+
+html.dark .el-input-number__decrease,
+html.dark .el-input-number__increase {
+  border-radius: 0 !important;
+}
+
+html.dark .el-input-number.is-controls-right .el-input-number__decrease {
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+html.dark .el-input-number.is-controls-right .el-input-number__increase {
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+/* 确保 SVG 图标颜色正确 */
+html.dark .el-input-number__decrease .el-icon,
+html.dark .el-input-number__increase .el-icon {
+  color: var(--color-text-secondary);
+}
+
+html.dark .el-input-number__decrease:hover .el-icon,
+html.dark .el-input-number__increase:hover .el-icon {
+  color: var(--color-primary);
+}

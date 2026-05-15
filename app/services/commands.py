@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
+from app.config import get_settings
 from app.database import db
 from app.models import Article, GitHubRepo, User
 from app.services.fetcher.github_trending import github_fetcher
@@ -204,7 +205,7 @@ class CommandHandler:
         示例: /ai_news 5 daily
         """
         # 解析参数
-        limit = 10
+        limit = get_settings().command_default_limit
         time_range = "daily"
         
         if len(args) >= 1:
@@ -264,7 +265,7 @@ class CommandHandler:
         
         # 获取GitHub热门
         repos = await deduplicator.get_recent_github_repos(
-            limit=10,
+            limit=get_settings().command_default_limit,
             language=language,
             time_range=time_range,
         )
@@ -274,7 +275,7 @@ class CommandHandler:
             repos_data = await github_fetcher.fetch_trending(
                 language=language,
                 time_range=time_range,
-                limit=10
+                limit=get_settings().command_default_limit
             )
             
             if not repos_data:
@@ -316,8 +317,8 @@ class CommandHandler:
         # 获取今日内容
         today = datetime.now().strftime("%Y-%m-%d")
         
-        articles = await deduplicator.get_recent_articles(limit=5)
-        repos = await deduplicator.get_recent_github_repos(limit=5)
+        articles = await deduplicator.get_recent_articles(limit=get_settings().command_preview_limit)
+        repos = await deduplicator.get_recent_github_repos(limit=get_settings().command_preview_limit)
         
         lines = [f"📊 **今日简报** - {today}\n"]
         
@@ -356,7 +357,7 @@ class CommandHandler:
         keyword = " ".join(args)
         
         # 搜索
-        articles = await deduplicator.search_articles(keyword, limit=10)
+        articles = await deduplicator.search_articles(keyword, limit=get_settings().command_default_limit)
         
         if not articles:
             return f"未找到包含「{keyword}」的资讯"

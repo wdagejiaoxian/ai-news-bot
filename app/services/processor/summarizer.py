@@ -78,44 +78,6 @@ class Summarizer:
 
 请直接输出标签，不需要其他内容:"""
 
-    # 关键词和标签生成提示词
-    TAGS_KEYWORDS_PROMPT_TEMPLATE = """请对以下多条资讯进行批量提取关键词、生成标签。
-=== 任务要求 ===
-【关键词】
-- 每条资讯提取 3-8 个关键词或短语
-- 使用英文逗号分隔
-- 优先选择：
-  * 技术术语（模型架构、算法、编程语言）
-  * 公司/机构名称
-  * 产品/项目名称
-  * 领域关键词（如：生成式AI、云计算、半导体）
-  * 商业术语（如：IPO、并购、融资轮次）
-
-【标签】
-- 每条资讯生成 2-5 个标签
-- 使用 # 开头
-- 标签体系（可多选）：
-  * 领域: #AI, #云计算, #半导体, #生物科技, #新能源, #区块链, #网络安全, #消费电子, #企业服务, #金融科技
-  * 技术: #LLM, #AIGC, #大模型, #自动驾驶, #机器人, #5G, #物联网, #边缘计算, #量子计算
-  * 主题: #融资, #产品发布, #技术突破, #行业分析, #政策解读, #人物动态, #并购, #开源
-  * 影响层级：#行业里程碑, #值得关注, #常规资讯
-
-=== 输出格式 ===
-1. 不要使用 markdown 代码块
-2. 不要添加任何解释文字
-3. 只输出纯 JSON 数组格式
-4. 返回的数组中的每一项的index都需要与用户输入的资讯列表的序号相对应
-
-=== 示例 ===
-[
-    {{"index": 0, "keywords": "关键词 1, 关键词 2, 关键词 3", "tags": "#标签1, #标签2"}},
-    {{"index": 1, "keywords": "关键词 3, 关键词 2, 关键词 5", "tags": "#标签6, #标签1"}}
-]
-
-=== 资讯列表 ===
-{articles}
-"""
-
     # 综合提示词模板
     COMBINED_PROMPT_TEMPLATE = """请阅读以下文章内容，完成三个任务：生成摘要、提取关键词、生成标签。
 文章标题: {title}
@@ -317,104 +279,13 @@ class Summarizer:
             logger.error(f"API 摘要失败: {e}")
             return None
 
-    async def batch_extract_tags_keywords(
-            self,
-            batch: list[dict[str, str]],
-    ) -> List[Dict] or None:
-        """生成关键词、标签"""
-        if not self.is_available:
-            logger.warning("无可用的摘要和关键词标签服务")
-            return None
-
-        if self._use_ollama:
-            return await self._extract_kt_with_ollama(batch)
-        elif self._use_api:
-            return await self._extract_kt_with_api(batch)
-
-        return None
-
-    async def _extract_kt_with_ollama(
-            self,
-            batch: list[dict[str, str]],
-    ) -> List[Dict] or None:
-        """使用 Ollama 生成关键词、标签"""
-        import httpx
-
-        try:
-            # 构建批量提示词
-            articles_text = ""
-            for i, article in enumerate(batch):
-                articles_text += f"""
-            {i}.文章标题: {article.get('title', '')[:100]}
-                文章内容: {article.get('content', '')[:200]}\n
-            """
-
-            prompt = self.TAGS_KEYWORDS_PROMPT_TEMPLATE.format(articles=articles_text)
-
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.ollama_url}/api/generate",
-                    json={
-                        "model": self.ollama_model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.3,
-                            "num_predict": 300,
-                        }
-                    },
-                    timeout=60.0
-                )
-
-            if response.status_code == 200:
-                return await self.batch_res_success(response, batch)
-                # result = response.json()
-                # summary = result.get("response", "").strip()
-                # return self._clean_summary(summary, max_length)
-
-            return None
-        except Exception as e:
-            logger.error(f"Ollama 摘要失败: {e}")
-            return None
-
-    async def _extract_kt_with_api(
-            self,
-            batch: list[dict[str, str]],
-    ) -> List[Dict] or None:
-        """使用 OpenAI API 生成摘要、关键词、标签"""
-
-        try:
-            # 构建批量提示词
-            articles_text = ""
-            for i, article in enumerate(batch):
-                articles_text += f"""
-                        {i}.文章标题: {article.get('title', '')[:100]}
-                            文章内容: {article.get('content', '')[:200]}\n
-                        """
-
-            prompt = self.TAGS_KEYWORDS_PROMPT_TEMPLATE.format(articles=articles_text)
-
-            result = await llm_manager.execute_with_limit(
-                self._call_llm_api,
-                prompt=prompt,
-                batch = batch,
-                sys_prompt = "你是一个专业的文章关键词提取和标签生成专家",
-                many = True
-            )
-            return result
-
-        except Exception as e:
-            logger.error(f"API 摘要失败: {e}")
-            return None
-
-    async def res_success(self,res, max_length):
+    async def res_success(self, res, max_length):
         """
         调用模型提取摘要、关键词、标签成功后数据的处理
         :param res: 模型返回的结果对象
         :param max_length: 摘要的最长长度
         :return: 一个处理好且包含摘要、关键词、标签的字典
         """
-
         result = res.json()
         result_obj = json.loads(result["choices"][0]["message"]["content"].strip())
         summary = self._clean_summary(result_obj.get('summary'), max_length)
@@ -426,89 +297,28 @@ class Summarizer:
             "tags": tags
         }
 
-    async def batch_res_success(self,res,batch):
-        result = res.json()
-        content = result["choices"][0]["message"]["content"]
-
-        # 解析JSON数组
-        tags_keywords_res = self._parse_json_array(content)
-
-        if tags_keywords_res:
-            # 将评分结果与文章对应
-            for item in tags_keywords_res:
-                idx = item.get("index", -1)
-                if 0 <= idx < len(batch):
-                    batch[idx]["article"].keywords = item.get("keywords", "")
-                    batch[idx]["article"].tags = item.get("tags", "")
-
-            logger.info(f"批量提取关键词、标签成功: {len(batch)} 篇文章")
-            return batch
-        else:
-            logger.warning(f"批量提取关键词、标签失败")
-            # return [
-            #     {**article, "score_data": self._default_score("评分失败")}
-            #     for article in articles
-            # ]
-            return None
-            
     async def _call_llm_api(
             self,
             prompt,
-            max_length = 200,
-            batch=None,
-            sys_prompt = "你是一个专业的AI资讯处理助手。",
-            many = False,
-            _selected_model=None,  # 接收传入的模型配置
-            _llm_mode=None
+            max_length=200,
+            sys_prompt="你是一个专业的AI资讯处理助手。",
+            _selected_model=None,
+            _llm_mode=None,
     ):
         """
         调用模型并判断返回结果是否成功
         :param prompt: 提示词
         :param max_length: 返回的摘要最大长度
-        :param batch: 批数量
         :param sys_prompt: 系统提示词
-        :param many: 是否批量处理
         :param _selected_model: 传入的模型配置
         :param _llm_mode:
         :return: 响应成功的数据或者None
         """
-        if batch is None:
-            batch = []
-
         # 使用传入的模型配置，如果没有则使用默认值
         api_key = _selected_model.api_key if _selected_model else self.openai_api_key
         api_base = _selected_model.api_base if _selected_model else self.openai_api_base
 
-        format_content = llm_manager.close_think_content(
-            selected_model=_selected_model,
-            prompt=prompt,
-            sys_prompt=sys_prompt,
-        )
-
         import httpx
-        # async def _call_api():
-        #     async with httpx.AsyncClient(timeout=60.0) as client:
-        #         http_response = await client.post(
-        #             f"{api_base}/chat/completions",
-        #             headers={
-        #                 "Authorization": f"Bearer {api_key}",
-        #                 "Content-Type": "application/json",
-        #             },
-        #             json={
-        #                 "model": model_name,
-        #                 "messages": [
-        #                     {"role": "system", "content": sys_prompt},
-        #                     {"role": "user", "content": prompt}
-        #                 ],
-        #                 "temperature": 0.3,
-        #                 "max_tokens": 400,
-        #                 # "thinking": {
-        #                 #     "type": "disabled"
-        #                 # }
-        #                 "enable_thinking": False
-        #             }
-        #         )
-        #     return http_response
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
@@ -517,25 +327,22 @@ class Summarizer:
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json=format_content
+                json={
+                    "model": _selected_model,
+                    "messages": [
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                }
             )
 
         if response.status_code == 200:
-            if many:
-                return await self.batch_res_success(response, batch)
             return await self.res_success(response, max_length)
         elif response.status_code == 429:
-            # await asyncio.sleep(5)
-            # # 重试一次
-            # response = await _call_api()
-            # if response.status_code == 200:
-            #     if many:
-            #         return await self.batch_res_success(response, batch)
-            #     return await self.res_success(response, max_length)
             raise Exception("429 Too Many Requests - 触发重试机制")
         else:
             raise Exception(f"API请求失败: {response.status_code}")
-        # return None
 
 
     
@@ -761,9 +568,9 @@ class Summarizer:
         self,
         title: str,
         content: str
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Optional[str]]:
         """处理文章，生成摘要、关键词和标签"""
-        result = {
+        result: Dict[str, Optional[str]] = {
             "summary": None,
             "keywords": None,
             "tags": None,

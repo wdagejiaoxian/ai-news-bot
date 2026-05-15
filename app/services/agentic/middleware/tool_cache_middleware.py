@@ -130,7 +130,7 @@ class ToolCacheMiddleware:
             logger.info(f'[中间件] 拦截工具: {tool_name}')
 
             # 只对RSS工具进行缓存
-            cached_tools = ['get_latest_ai_news', 'search_ai_news']
+            cached_tools = ['get_latest_ai_news', 'search_ai_news', 'search_ai_news_semantic', 'get_rag_context']
 
             if tool_name in cached_tools:
                 # 检查缓存

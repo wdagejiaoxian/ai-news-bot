@@ -1,0 +1,313 @@
+/**
+ * CSS 变量定义 - 设计系统核心
+ * 遵循 DESIGN.md 规范
+ *
+ * 命名规范：[category]-[property]-[modifier]
+ * 颜色值全部使用 CSS 变量，禁止直接使用十六进制
+ */
+
+:root {
+  /* ==================== 颜色 - 亮色模式 ==================== */
+
+  /* 品牌色 - 升级为现代靛蓝紫 */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-light: #a5b4fc;
+  --color-primary-dark: #4338ca;
+  --color-primary-darker: #3730a3;
+
+  /* 品牌渐变色 - 新增 */
+  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --gradient-card: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+
+  /* 白色透明层 */
+  --color-white-alpha-10: rgba(255, 255, 255, 0.1);
+  --color-white-alpha-08: rgba(255, 255, 255, 0.08);
+  --color-white-alpha-06: rgba(255, 255, 255, 0.06);
+
+  /* 黑色透明层 */
+  --color-black-alpha-50: rgba(0, 0, 0, 0.5);
+  --color-black-alpha-30: rgba(0, 0, 0, 0.3);
+  --color-black-alpha-10: rgba(0, 0, 0, 0.1);
+
+  /* 文字反色透明 */
+  --color-text-inverse-alpha-85: rgba(255, 255, 255, 0.85);
+
+  /* 文字色 */
+  --color-text-primary: #222222;
+  --color-text-secondary: #45515e;
+  --color-text-muted: #8e8e93;
+  --color-text-disabled: #c0c4cc;
+  --color-text-inverse: #ffffff;
+
+  /* 背景色 */
+  --color-bg-page: #ffffff;
+  --color-bg-content: #f0f2f5;
+  --color-bg-card: #ffffff;
+  --color-bg-sidebar: #304156;
+  --color-bg-sidebar-hover: #2d3a4f;
+  --color-bg-header: #ffffff;
+
+  /* 侧边栏文字色（深色背景专用） */
+  --color-sidebar-text: #bfcbd9;
+  --color-sidebar-text-hover: #ffffff;
+  --color-sidebar-text-active: #409eff;
+
+  /* 边框色 */
+  --color-border: #e5e7eb;
+  --color-border-light: #f2f3f5;
+  --color-border-dark: #dcdfe6;
+
+  /* 功能色 - 升级为更现代的配色 */
+  --color-success: #10b981;
+  --color-success-hover: #059669;
+  --color-warning: #f59e0b;
+  --color-warning-hover: #d97706;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-info: #6366f1;
+  --color-info-hover: #4f46e5;
+
+  /* 功能渐变色 - 新增 */
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+
+  /* 语义色 - 背景 */
+  --color-success-bg: #d1fae5;
+  --color-warning-bg: #fef3c7;
+  --color-danger-bg: #fee2e2;
+  --color-info-bg: #e0e7ff;
+
+  /* 辅助渐变色（装饰性） */
+  --color-purple: #8b5cf6;
+  --color-purple-light: #a78bfa;
+  --color-green-light: #95d475;
+  --color-green-lighter: #4ade80;
+  --color-orange-light: #f3d19e;
+  --color-orange-lighter: #fbbf24;
+  --color-red-light: #f87171;
+
+  /* 登录页插画 - 亮色模式 */
+  --color-login-gradient: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 50%, #8b5cf6 100%);
+  --color-login-svg-circle: rgba(99, 102, 241, 0.3);
+  --color-login-svg-line: rgba(99, 102, 241, 0.5);
+  --color-login-svg-node: rgba(99, 102, 241, 0.9);
+  --color-login-svg-dot: rgba(99, 102, 241, 0.8);
+  --color-login-svg-fill: rgba(99, 102, 241, 0.9);
+
+  /* 品牌色透明层 */
+  --color-primary-alpha-10: rgba(99, 102, 241, 0.1);
+  --color-primary-alpha-20: rgba(99, 102, 241, 0.2);
+  --color-primary-alpha-30: rgba(99, 102, 241, 0.3);
+
+  /* 功能色透明层 */
+  --color-success-alpha-10: rgba(16, 185, 129, 0.1);
+  --color-success-alpha-20: rgba(16, 185, 129, 0.2);
+  --color-success-alpha-30: rgba(16, 185, 129, 0.3);
+  --color-warning-alpha-10: rgba(245, 158, 11, 0.1);
+  --color-warning-alpha-20: rgba(245, 158, 11, 0.2);
+  --color-warning-alpha-30: rgba(245, 158, 11, 0.3);
+  --color-danger-alpha-10: rgba(239, 68, 68, 0.1);
+  --color-danger-alpha-20: rgba(239, 68, 68, 0.2);
+  --color-danger-alpha-30: rgba(239, 68, 68, 0.3);
+  --color-info-alpha-10: rgba(99, 102, 241, 0.1);
+  --color-info-alpha-20: rgba(99, 102, 241, 0.2);
+  --color-info-alpha-30: rgba(99, 102, 241, 0.3);
+
+  /* ==================== 字体 ==================== */
+
+  --font-family-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-display: 'Outfit', 'DM Sans', sans-serif;
+  --font-family-mono: 'Roboto Mono', 'SF Mono', Consolas, monospace;
+
+  --font-size-display: 80px;
+  --font-size-h1: 32px;
+  --font-size-h2: 28px;
+  --font-size-h3: 24px;
+  --font-size-h4: 20px;
+  --font-size-body: 16px;
+  --font-size-body-lg: 18px;
+  --font-size-small: 14px;
+  --font-size-caption: 13px;
+  --font-size-micro: 12px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.10;
+  --line-height-normal: 1.50;
+  --line-height-relaxed: 1.70;
+
+  /* ==================== 间距 ==================== */
+
+  --spacing-unit: 8px;
+
+  --spacing-xs: 4px;    /* 0.5x */
+  --spacing-sm: 8px;     /* 1x */
+  --spacing-md: 16px;    /* 2x */
+  --spacing-lg: 24px;    /* 3x */
+  --spacing-xl: 32px;    /* 4x */
+  --spacing-2xl: 40px;   /* 5x */
+  --spacing-3xl: 48px;   /* 6x */
+  --spacing-4xl: 64px;   /* 8x */
+
+  /* ==================== 圆角 ==================== */
+
+  --radius-sm: 4px;       /* 小标签 */
+  --radius-md: 8px;       /* 按钮、卡片 */
+  --radius-lg: 13px;      /* 中等卡片 */
+  --radius-xl: 16px;      /* 大容器 */
+  --radius-2xl: 20px;     /* 大卡片/产品卡片 */
+  --radius-3xl: 24px;     /* 特大卡片 */
+  --radius-pill: 9999px;   /* 胶囊按钮 */
+
+  /* ==================== 玻璃拟态 ==================== */
+
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-dark: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-blur: 12px;
+
+  /* ==================== 阴影 ==================== */
+
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 12px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.10);
+  --shadow-brand: 0 0 15px rgba(44, 30, 116, 0.16);
+
+  /* ==================== 布局 ==================== */
+
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 60px;
+  --content-max-width: 1440px;
+
+  /* ==================== 响应式断点 ==================== */
+
+  --breakpoint-xs: 575px;
+  --breakpoint-sm: 767px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+
+  /* ==================== 动画 ==================== */
+
+  --transition-duration-instant: 0.05s;
+  --transition-duration-fast: 0.15s;
+  --transition-duration-normal: 0.25s;
+  --transition-duration-slow: 0.4s;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-timing-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ==================== Z-Index ==================== */
+
+  --z-index-sidebar: 100;
+  --z-index-header: 200;
+  --z-index-overlay: 300;
+  --z-index-modal: 400;
+  --z-index-tooltip: 500;
+}
+
+/* ==================== 暗色模式 ==================== */
+
+:root.dark {
+  /* 文字色 */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8e8e93;
+  --color-text-muted: #6b7280;
+  --color-text-disabled: #4b5563;
+  --color-text-inverse: #ffffff;
+
+  /* 背景色 */
+  --color-bg-page: #181e25;
+  --color-bg-content: #1a2129;
+  --color-bg-card: #222930;
+  --color-bg-sidebar: #0f1419;
+  --color-bg-sidebar-hover: #1a2530;
+  --color-bg-header: #1a2129;
+
+  /* 暗色模式侧边栏文字 */
+  --color-sidebar-text: #8899a6;
+  --color-sidebar-text-hover: #ffffff;
+  --color-sidebar-text-active: #60a5fa;
+
+  /* 边框色 */
+  --color-border: #2f3842;
+  --color-border-light: #222930;
+  --color-border-dark: #4b5563;
+
+  /* 阴影 - 暗色模式加深 */
+  --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 12px 16px rgba(0, 0, 0, 0.40);
+  --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.50);
+  --shadow-brand: 0 0 15px rgba(96, 165, 250, 0.25);
+
+  /* 玻璃拟态 - 暗色模式 */
+  --glass-bg: rgba(34, 41, 48, 0.85);
+  --glass-bg-dark: rgba(15, 20, 25, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  /* 侧边栏透明层 - 暗色模式 */
+  --color-white-alpha-06: rgba(255, 255, 255, 0.06);
+  --color-white-alpha-08: rgba(255, 255, 255, 0.08);
+  --color-white-alpha-10: rgba(255, 255, 255, 0.10);
+
+  /* 黑色透明层 - 暗色模式加深 */
+  --color-black-alpha-50: rgba(0, 0, 0, 0.6);
+  --color-black-alpha-30: rgba(0, 0, 0, 0.4);
+  --color-black-alpha-10: rgba(0, 0, 0, 0.2);
+
+  /* 品牌色 - 暗色模式 */
+  --color-primary-darker: #3730a3;
+
+  /* 品牌色透明层 - 暗色模式 */
+  --color-primary-alpha-10: rgba(99, 102, 241, 0.15);
+  --color-primary-alpha-20: rgba(99, 102, 241, 0.25);
+  --color-primary-alpha-30: rgba(99, 102, 241, 0.35);
+
+  /* 功能色透明层 - 暗色模式 */
+  --color-success-alpha-10: rgba(16, 185, 129, 0.15);
+  --color-success-alpha-20: rgba(16, 185, 129, 0.25);
+  --color-success-alpha-30: rgba(16, 185, 129, 0.35);
+  --color-warning-alpha-10: rgba(245, 158, 11, 0.15);
+  --color-warning-alpha-20: rgba(245, 158, 11, 0.25);
+  --color-warning-alpha-30: rgba(245, 158, 11, 0.35);
+  --color-danger-alpha-10: rgba(239, 68, 68, 0.15);
+  --color-danger-alpha-20: rgba(239, 68, 68, 0.25);
+  --color-danger-alpha-30: rgba(239, 68, 68, 0.35);
+  --color-info-alpha-10: rgba(99, 102, 241, 0.15);
+  --color-info-alpha-20: rgba(99, 102, 241, 0.25);
+  --color-info-alpha-30: rgba(99, 102, 241, 0.35);
+
+  /* 功能色 - 暗色模式调整 */
+  --color-success: #10b981;
+  --color-success-hover: #34d399;
+  --color-warning: #f59e0b;
+  --color-warning-hover: #fbbf24;
+  --color-danger: #ef4444;
+  --color-danger-hover: #f87171;
+  --color-info: #818cf8;
+  --color-info-hover: #a5b4fc;
+
+  /* 功能色背景 - 暗色模式调整 */
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-danger-bg: rgba(239, 68, 68, 0.15);
+  --color-info-bg: rgba(99, 102, 241, 0.15);
+
+  --color-green-lighter: #4ade80;
+  --color-orange-lighter: #fbbf24;
+  --color-red-light: #f87171;
+
+  /* 登录页插画 - 暗色模式 */
+  --color-login-gradient: linear-gradient(135deg, #1e1b4b 0%, #0f0f23 100%);
+  --color-login-svg-circle: rgba(99, 102, 241, 0.4);
+  --color-login-svg-line: rgba(99, 102, 241, 0.5);
+  --color-login-svg-node: rgba(99, 102, 241, 0.9);
+  --color-login-svg-dot: rgba(99, 102, 241, 0.6);
+  --color-login-svg-fill: rgba(99, 102, 241, 1.0);
+}
